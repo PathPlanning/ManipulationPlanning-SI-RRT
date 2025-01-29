@@ -1,0 +1,27 @@
+{
+  "start_configuration": [
+    2.9716999530792236, 1.5277899503707886, -2.6211299896240234,
+    1.8650000095367432, 1.1416300535202026, 0.0
+  ],
+  "end_configuration": [
+    -1.5971200466156006, 1.5277899503707886, -2.6211600303649902,
+    1.864959955215454, 1.1416499614715576, 0.0
+  ],
+  "robot_urdf": "./Blender/robots/xarm6/xarm6vis.urdf",
+  "robot_joints_order": [
+    "joint1",
+    "joint2",
+    "joint3",
+    "joint4",
+    "joint5",
+    "joint6"
+  ],
+  "robot_joint_max_velocity":[3.1415,3.1415,3.1415,3.1415,3.1415,3.1415],
+  "robot_capsules_radius": [0.047, 0.12, 0.11, 0.09, 0.05, 0.0380],
+  "robot_base_coords": [0.0, 0.0, 0.0],
+  "robot_base_quat_rot": [0.0, 0.0, 0.0, 1.0],
+  "frame_count": 1800,
+  "fps": 30,
+  "blender_file_path": "./Blender/scenes/flying boxes.blend",
+  "obstacles": []
+}

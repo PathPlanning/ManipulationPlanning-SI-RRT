@@ -1,0 +1,81 @@
+---
+services:
+  mdp_debug:
+    tty: true
+    build: ./docker/mdp_debug
+    image: kaizernurik/mdp:debug
+    container_name: mdp_debug
+    security_opt:
+      - seccomp:unconfined #optional
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+      - SUBFOLDER=/ #optional
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - ./:/app
+    ports:
+      - 3000:3000
+      - 3001:3001
+    runtime: "nvidia"
+    devices:
+      - /dev/dri:/dev/dri
+  # mdp_release:
+  #   build: ./docker/mdp_release
+  #   image: kaizernurik/mdp:release
+  #   container_name: mdp_release
+  #   tty: true
+  #   security_opt:
+  #     - seccomp:unconfined #optional
+  #   environment:
+  #     - PUID=1000
+  #     - PGID=1000
+  #     - TZ=Etc/UTC
+  #     - SUBFOLDER=/ #optional
+  #     - NVIDIA_VISIBLE_DEVICES=all
+  #     - DISPLAY=:0 
+  #   volumes:
+  #     - ./:/app
+  #     - $HOME/.Xauthority:/root/.Xauthority:rw
+  #     - /mnt/wslg :/mnt/wslg
+  #   ports:
+  #     - 3000:3000
+  #     - 3001:3001
+  #     - 6000:6000
+  #     - 6001:6001
+  #   runtime: "nvidia"
+  #   network_mode: host
+  #   deploy:
+  #       resources:
+  #         reservations:
+  #           devices:
+  #             - driver: nvidia
+  #               count: all
+  #               capabilities: [gpu]
+  # blender:
+  #   build: ./docker/blender
+  #   image: qqwe
+  #   container_name: blenasddeasdr
+  #   security_opt:
+  #     - seccomp:unconfined #optional
+  #   environment:
+  #     - PUID=1000
+  #     - PGID=1000
+  #     - TZ=Etc/UTC
+  #     - SUBFOLDER=/ #optional
+  #     - NVIDIA_VISIBLE_DEVICES=all
+  #   volumes:
+  #     - /path/to/blender/config:/config
+  #   ports:
+  #     - 3000:3000
+  #     - 3001:3001
+  #   restart: unless-stopped
+  #   runtime: "nvidia"
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: all
+  #             capabilities: [gpu]

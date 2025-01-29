@@ -1,0 +1,52 @@
+{
+    "number_of_tries":0,
+    "ignore_low_bound_time":false,
+
+    "DRGBT_MAX_NUM_ITER":100000000,                                         
+    "DRGBT_MAX_ITER_TIME":0.01,                                             
+    "DRGBT_MAX_PLANNING_TIME":180,
+    "DRGBT_INIT_HORIZON_SIZE":10,
+    "DRGBT_TRESHOLD_WEIGHT":0.5,
+    "DRGBT_D_CRIT":0.01,                                                   
+    "DRGBT_MAX_NUM_VALIDITY_CHECKS":10,                                
+    "DRGBT_MAX_NUM_MODIFY_ATTEMPTS":10,                                  
+    "DRGBT_STATIC_PLANNER_TYPE":"RGBMT*",                       
+    "DRGBT_REAL_TIME_SCHEDULING":false,               
+    "DRGBT_MAX_TIME_TASK1":10,                                       
+    "DRGBT_USE_SPLINE":false,      
+    "DRGBT_GUARANTEED_SAFE_MOTION":false,
+    
+    
+    "RGBMT*_MAX_NUM_ITER":100000000000,
+    "RGBMT*_MAX_NUM_STATES":100000000000,
+    "RGBMT*_MAX_PLANNING_TIME":100000000000,
+    "RGBMT*_TERMINATE_WHEN_PATH_IS_FOUND":true,
+
+    "RGBTConnect_MAX_NUM_ITER":100000000000,
+    "RGBTConnect_MAX_NUM_STATES":100000000000,
+    "RGBTConnect_MAX_PLANNING_TIME":100000000000,
+    "RGBTConnect_NUM_LAYERS":5,
+
+
+    "RBTConnect_MAX_NUM_ITER":100000000000,
+    "RBTConnect_MAX_NUM_STATES":100000000000,
+    "RBTConnect_MAX_PLANNING_TIME":100000000000,
+    "RBTConnect_D_CRIT":0.03,
+    "RBTConnect_DELTA":20,
+    "RBTConnect_NUM_SPINES":10,
+    "RBTConnect_NUM_ITER_SPINE":3,
+    "RBTConnect_USE_EXPANDED_BUBBLE":true,
+
+    "RVS_EQUALITY_THRESHOLD":0.000001,
+    "RVS_NUM_INTERPOLATION_VALIDITY_CHECKS":4,
+
+    "RRTConnect_MAX_NUM_ITER": 1000000000,	  
+    "RRTConnect_MAX_NUM_STATES": 1000000000,  
+    "RRTConnect_MAX_PLANNING_TIME": 10,   	  
+    "RRTConnect_MAX_EXTENSION_STEPS": 50,		  
+    "RRTConnect_EPS_STEP": 0.1
+    
+  }
+
+
+  
