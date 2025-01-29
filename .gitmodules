@@ -1,0 +1,3 @@
+[submodule "RPMPLv2"]
+	path = RPMPLv2
+	url = git@github.com:PathPlanning/RPMPLv2.git
