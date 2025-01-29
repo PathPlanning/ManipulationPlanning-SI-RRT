@@ -9,6 +9,8 @@ Combination of Rapidly-Exporing Random Trees (RRT) and Safe Interval Path Planni
 
 ![experiments](<supplementary material/output.gif>)
 
+![experiments](<supplementary material/0001-1376.gif>)
+
 # MVP. Updates will be soon.
 
 ## Quick start
