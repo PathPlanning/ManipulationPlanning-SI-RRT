@@ -26,7 +26,7 @@ Combination of Rapidly-Exporing Random Trees (RRT) and Safe Interval Path Planni
 >
 > Kerimov N., Onegin A, Yakovlev K. *Safe Interval Randomized Path Planning For Manipulators*.
 >
-> **[[Full text on arXiv](https://arxiv.org/abs/2408.14948)]**
+> **[[Full text on arXiv](https://arxiv.org/abs/2412.19567)]**
 
 ## Overview
 
