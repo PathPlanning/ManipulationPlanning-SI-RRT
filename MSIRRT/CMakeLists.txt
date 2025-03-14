@@ -32,7 +32,7 @@ add_subdirectory("../STRRT_Planner/src/config_read_writer" ./config_read_writer)
 add_subdirectory("../STRRT_Planner/src/CollisionManager" ./CollisionManager)
 
 # Add executable
-add_library(MSIRRT_Planner_lib STATIC "./src/Planner.cpp" "./src/PlannerConnect.cpp" "./src/Tree.cpp" "./src/Vertex.cpp")
+add_library(MSIRRT_Planner_lib STATIC  "./src/PlannerConnect.cpp" "./src/Tree.cpp" "./src/Vertex.cpp")
 target_link_libraries(MSIRRT_Planner_lib PUBLIC config_read_writer CollisionManager)  
 target_include_directories(MSIRRT_Planner_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
 

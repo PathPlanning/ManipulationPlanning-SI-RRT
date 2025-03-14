@@ -25,17 +25,19 @@ namespace MDP::MSIRRT
         std::string tree_name;
         size_t tree_idx;
 
-        std::vector<MDP::MSIRRT::Vertex> array_of_vertices;
+        std::vector<MDP::MSIRRT::Vertex*> array_of_vertices; //TODO: Maybe move to private?
         MDP::MSIRRT::KdTree kd_tree;
 
         MDP::MSIRRT::Vertex &getNearestState(const MDP::MSIRRT::Vertex q);
 
-        void add_vertex(MDP::MSIRRT::Vertex q_new, MDP::MSIRRT::Vertex *q_parent, double departure_time, double arrival_time);
-        void delete_vertex(int vertex_id);
+        void add_vertex(const MDP::MSIRRT::Vertex::VertexCoordType &q_new_coords, std::pair<int, int> q_new_safe_interval, MDP::MSIRRT::Vertex *q_parent, double departure_time, double arrival_time);
+        void add_vertex(const std::vector<double> &q_new_coords, std::pair<int, int> q_new_safe_interval, MDP::MSIRRT::Vertex *q_parent, double departure_time, double arrival_time);
+
+        // void delete_vertex(int vertex_id);
 
         template <class BBOX>
         bool kdtree_get_bbox(BBOX & /* bb */) const { return false; }
         inline size_t kdtree_get_point_count() const { return array_of_vertices.size(); }
-        inline double kdtree_get_pt(const size_t idx, const size_t dim) const { return array_of_vertices[idx].coords[dim]; }
+        inline double kdtree_get_pt(const size_t idx, const size_t dim) const { return array_of_vertices[idx]->coords[dim]; }
     };
 }

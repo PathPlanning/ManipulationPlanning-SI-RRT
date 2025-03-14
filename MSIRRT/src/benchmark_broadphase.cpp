@@ -12,7 +12,6 @@
 #include "config_read_writer/STRRTConfigReader.hpp"
 #include "config_read_writer/ResultsWriter.hpp"
 #include "CollisionManager/CollisionManager.hpp"
-#include "Planner.hpp"
 
 void parse_my_args(int argc, char **argv, std::string &path_to_scene_json, std::string &path_to_result_folder, std::string &path_to_strrt_config_json)
 {

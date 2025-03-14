@@ -28,19 +28,19 @@ MDP::MSIRRT::PlannerConnect::PlannerConnect(MDP::ConfigReader::SceneTask scene_t
     assert(start_safe_intervals.size() > 0);
     assert(start_safe_intervals[0].first == 0);
 
-    this->start_tree->add_vertex(MDP::MSIRRT::Vertex(scene_task.start_configuration, start_safe_intervals[0]), nullptr, -1, 0);
+    this->start_tree->add_vertex(scene_task.start_configuration, start_safe_intervals[0], nullptr, -1, 0);
     for (int another_safe_interval_id = 1; another_safe_interval_id < start_safe_intervals.size(); another_safe_interval_id++)
     {
-        this->orphan_tree->add_vertex(MDP::MSIRRT::Vertex(scene_task.start_configuration, start_safe_intervals[another_safe_interval_id]), nullptr, -1, -1);
+        this->orphan_tree->add_vertex(scene_task.start_configuration, start_safe_intervals[another_safe_interval_id], nullptr, -1, -1);
     }
 
-    this->root_node = &this->start_tree->array_of_vertices[0];
+    this->root_node = this->start_tree->array_of_vertices[0];
     this->root_node->arrival_time = 0;
 
     this->goal_coords = MDP::MSIRRT::Vertex::VertexCoordType(scene_task.end_configuration.data());
     this->goal_safe_intervals = this->collision_manager.get_safe_intervals(scene_task.end_configuration);
 
-    this->goal_tree->add_vertex(MDP::MSIRRT::Vertex(this->goal_coords, this->goal_safe_intervals.back()), nullptr, -1, this->goal_safe_intervals.back().second);
+    this->goal_tree->add_vertex(this->goal_coords, this->goal_safe_intervals.back(), nullptr, -1, this->goal_safe_intervals.back().second);
     // сheck if the latest safe interval at goal is safe
     assert(this->goal_safe_intervals.back().second == scene_task.frame_count - 1);
     this->current_tree = this->goal_tree;
@@ -283,7 +283,7 @@ MDP::MSIRRT::Vertex *MDP::MSIRRT::PlannerConnect::get_nearest_node(const MDP::MS
     nanoflann::KNNResultSet<double> resultSet(num_results);
     resultSet.init(&ret_index, &out_dist_sqr);
     this->current_tree->kd_tree.findNeighbors(resultSet, coords.data(), {0});
-    return &(this->current_tree->array_of_vertices[ret_index]);
+    return this->current_tree->array_of_vertices[ret_index];
 }
 
 std::vector<std::pair<MDP::MSIRRT::Vertex *, int>> MDP::MSIRRT::PlannerConnect::get_nearest_node_by_radius(const MDP::MSIRRT::Vertex::VertexCoordType &coords, double radius, MDP::MSIRRT::Tree *tree)
@@ -300,7 +300,7 @@ std::vector<std::pair<MDP::MSIRRT::Vertex *, int>> MDP::MSIRRT::PlannerConnect::
     result.reserve(resultSet.m_indices_dists.size());
     for (auto node_ind_dist_pair : resultSet.m_indices_dists)
     {
-        result.emplace_back(&(tree->array_of_vertices[node_ind_dist_pair.first]), node_ind_dist_pair.first);
+        result.emplace_back(tree->array_of_vertices[node_ind_dist_pair.first], node_ind_dist_pair.first);
     }
 
     return result;
@@ -374,8 +374,8 @@ std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::set_parent(MDP::
                         // assert(!is_collision_motion(start_coords, start_coords, candidate_node.first->arrival_time, departure_time));
                         // assert((safe_intervals_of_coord_rand[safe_interval_ind].first <= arrival_time && safe_intervals_of_coord_rand[safe_interval_ind].second >= arrival_time) || fabs(safe_intervals_of_coord_rand[safe_interval_ind].second - arrival_time) < 0.001 || fabs(safe_intervals_of_coord_rand[safe_interval_ind].first - arrival_time) < 0.001);
                         // assert((candidate_node.first->safe_interval.first <= departure_time && candidate_node.first->safe_interval.second >= departure_time));
-                        this->current_tree->add_vertex(MDP::MSIRRT::Vertex(coord_rand, safe_intervals_of_coord_rand[safe_interval_ind]), candidate_node.first, departure_time, arrival_time);
-                        added_vertices.push_back(&(this->current_tree->array_of_vertices.back()));
+                        this->current_tree->add_vertex(coord_rand, safe_intervals_of_coord_rand[safe_interval_ind], candidate_node.first, departure_time, arrival_time);
+                        added_vertices.push_back(this->current_tree->array_of_vertices.back());
                         found_parent = true;
                         break;
                     }
@@ -388,7 +388,7 @@ std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::set_parent(MDP::
 
             // if (!found_parent)
             // {
-            //     this->orphan_tree->add_vertex(MDP::MSIRRT::Vertex(coord_rand, safe_intervals_of_coord_rand[safe_interval_ind]), nullptr, -1, safe_intervals_of_coord_rand[safe_interval_ind].second + 1);
+            //     this->orphan_tree->add_vertex(coord_rand, safe_intervals_of_coord_rand[safe_interval_ind], nullptr, -1, safe_intervals_of_coord_rand[safe_interval_ind].second + 1);
             // }
             safe_interval_ind++;
         }
@@ -454,8 +454,8 @@ std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::set_parent(MDP::
                         // assert(!is_collision_motion(start_coords, start_coords, departure_time, candidate_node.first->arrival_time));
                         // std::cout<<safe_intervals_of_coord_rand[safe_interval_ind].first<<" "<<safe_intervals_of_coord_rand[safe_interval_ind].second<<" "<<arrival_time<<std::endl;
                         // assert((safe_intervals_of_coord_rand[safe_interval_ind].first <= arrival_time && safe_intervals_of_coord_rand[safe_interval_ind].second >= arrival_time) || fabs(safe_intervals_of_coord_rand[safe_interval_ind].second - arrival_time) < 0.001 || fabs(safe_intervals_of_coord_rand[safe_interval_ind].first - arrival_time) < 0.001);
-                        this->current_tree->add_vertex(MDP::MSIRRT::Vertex(coord_rand, safe_intervals_of_coord_rand[safe_interval_ind]), candidate_node.first, departure_time, arrival_time);
-                        added_vertices.push_back(&(this->current_tree->array_of_vertices.back()));
+                        this->current_tree->add_vertex(coord_rand, safe_intervals_of_coord_rand[safe_interval_ind], candidate_node.first, departure_time, arrival_time);
+                        added_vertices.push_back(this->current_tree->array_of_vertices.back());
                         found_parent = true;
                         break;
                     }
@@ -468,7 +468,7 @@ std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::set_parent(MDP::
 
             // if (!found_parent)
             // {
-            //     this->orphan_tree->add_vertex(MDP::MSIRRT::Vertex(coord_rand, safe_intervals_of_coord_rand[safe_interval_ind]), nullptr, -1, safe_intervals_of_coord_rand[safe_interval_ind].second + 1);
+            //     this->orphan_tree->add_vertex(coord_rand, safe_intervals_of_coord_rand[safe_interval_ind], nullptr, -1, safe_intervals_of_coord_rand[safe_interval_ind].second + 1);
             // }
             safe_interval_ind++;
         }
@@ -574,16 +574,16 @@ void MDP::MSIRRT::PlannerConnect::prune_goal_tree()
             double arrival_time = departure_time + time_to_node;
             if (!is_collision_motion(start_coords, goal_tree_node->coords, departure_time, arrival_time))
             {
-                this->start_tree->add_vertex(MDP::MSIRRT::Vertex(goal_tree_node->coords, goal_tree_node->safe_interval), start_tree_node, departure_time, arrival_time);
-                start_tree_node = &(this->start_tree->array_of_vertices.back());
+                this->start_tree->add_vertex(goal_tree_node->coords, goal_tree_node->safe_interval, start_tree_node, departure_time, arrival_time);
+                start_tree_node = this->start_tree->array_of_vertices.back();
                 found_dep_time = true;
                 break;
             }
         }
         if (!found_dep_time)
         {
-            this->start_tree->add_vertex(MDP::MSIRRT::Vertex(goal_tree_node->coords, goal_tree_node->safe_interval), start_tree_node, goal_tree_node_child->arrival_time, goal_tree_node_child->departure_from_parent_time);
-            start_tree_node = &(this->start_tree->array_of_vertices.back());
+            this->start_tree->add_vertex(goal_tree_node->coords, goal_tree_node->safe_interval, start_tree_node, goal_tree_node_child->arrival_time, goal_tree_node_child->departure_from_parent_time);
+            start_tree_node = this->start_tree->array_of_vertices.back();
         }
         goal_tree_node_child = goal_tree_node;
         goal_tree_node = goal_tree_node->parent;

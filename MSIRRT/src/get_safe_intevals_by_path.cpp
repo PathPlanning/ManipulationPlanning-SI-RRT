@@ -14,7 +14,6 @@
 #include "config_read_writer/STRRTConfigReader.hpp"
 #include "config_read_writer/ResultsWriter.hpp"
 #include "CollisionManager/CollisionManager.hpp"
-#include "Planner.hpp"
 // Функция для парсинга и извлечения данных
 std::vector<std::pair<double, std::vector<double>>> extractFinalPlannerData(const std::string &jsonFilePath)
 {
