@@ -42,13 +42,12 @@ The following path planning algorithms are used:
 
 This repository can also be used as a base framework for implementing custom AMAPF algorithms.
 
-<!-- ## Repository Structure
+## Repository Structure
 
 The repository is organized into several branches:
 
-* **`main` branch** [[**Link**](https://github.com/PathPlanning/TP-SWAP/tree/main)]: Contains the core implementation of the AMAPF algorithms, including all supported methods.
-* **`experiments` branch** [[**Link**](https://github.com/PathPlanning/TP-SWAP/tree/experiments)]: Includes scripts and resources for running full-scale experiments, as described in the referenced paper. This branch provides tools for task generation, experiment execution, and result analysis.
-* **`supplementary` branch** [[**Link**](https://github.com/PathPlanning/TP-SWAP/tree/supplementary)]: Contains extended experimental results analysis. This branch stands as supplementary material for the paper. -->
+* **`main` branch** [[**Link**](https://github.com/PathPlanning/ManipulationPlanning-SI-RRT/tree/main)]: Contains up-to-date realisation of the algorithm.
+* **`reproducibility-version` branch** [[**Link**](https://github.com/PathPlanning/ManipulationPlanning-SI-RRT/tree/reproducibility-version)]: Contains version of the algorithm, that was used in paper's experiments.
 
 ## Quick start
 
