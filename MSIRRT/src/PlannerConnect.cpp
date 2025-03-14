@@ -41,15 +41,15 @@ MDP::MSIRRT::PlannerConnect::PlannerConnect(MDP::ConfigReader::SceneTask scene_t
     this->goal_safe_intervals = this->collision_manager.get_safe_intervals(scene_task.end_configuration);
 
     this->goal_tree->add_vertex(MDP::MSIRRT::Vertex(this->goal_coords, this->goal_safe_intervals.back()), nullptr, -1, this->goal_safe_intervals.back().second);
-
+    // сheck if the latest safe interval at goal is safe
     assert(this->goal_safe_intervals.back().second == scene_task.frame_count - 1);
     this->current_tree = this->goal_tree;
     this->other_tree = this->start_tree;
-    this->max_planning_time = 20;
-    this->stop_when_path_found = true;
     this->goal_reached = false;
-    this->planner_range = 1;
-    this->vmax = 3.1415;
+    this->max_planning_time = 20;      // TODO: remove hardcode
+    this->stop_when_path_found = true; // TODO: remove hardcode
+    this->planner_range = 1;           // TODO: remove hardcode
+    this->vmax = 3.1415;               // TODO: remove hardcode
 }
 // destructor
 MDP::MSIRRT::PlannerConnect::~PlannerConnect()
@@ -175,152 +175,6 @@ bool MDP::MSIRRT::PlannerConnect::connect_trees(MDP::MSIRRT::Vertex::VertexCoord
     return false;
 }
 
-// std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::extend_naive(MDP::MSIRRT::Vertex::VertexCoordType &coords_of_new)
-// {
-//     MDP::MSIRRT::Vertex *q_nearest = this->get_nearest_node(coords_of_new, &(this->current_tree)); // find nearest neighbor
-
-//     MDP::MSIRRT::Vertex::VertexCoordType delta_vector = coords_of_new - q_nearest->coords;
-//     std::vector<MDP::MSIRRT::Vertex *> added_vertices;
-
-//     double delta = delta_vector.norm();
-//     // std::cout << "delta: " << delta << std::endl;
-//     if (delta <= (0.01)) // zero division check
-//     {
-//         std::cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" << std::endl; // we don't expect such behavior
-//         return added_vertices;
-//     }
-
-//     if (delta >= this->planner_range)
-//     {
-//         coords_of_new = q_nearest->coords + delta_vector.normalized() * this->planner_range;
-//     }
-
-//     std::vector<double> robot_angles(coords_of_new.data(), coords_of_new.data() + coords_of_new.rows() * coords_of_new.cols());
-
-//     std::vector<std::pair<int, int>> safe_intervals_of_coords_of_new = this->collision_manager.get_safe_intervals(robot_angles);
-
-//     int safe_interval_ind = 0;
-//     int time_to_goal = (coords_of_new - this->goal_coords).norm() * (double)this->scene_task.fps / this->vmax;
-//     for (std::pair<int, int> safe_int : safe_intervals_of_coords_of_new) // For each interval
-//     {
-//         // if we can't reach goal from that interval - skip
-//         if (safe_int.first + time_to_goal > scene_task.frame_count)
-//         {
-//             continue;
-//         }
-//         bool found_parent = false;
-//         // std::cout << safe_int.first << " " << safe_int.second  << std::endl;
-
-//         for (int arrival_time = safe_int.first; arrival_time < std::min(safe_int.second, (int)this->scene_task.frame_count - time_to_goal); arrival_time++)
-//         {
-
-//             int parent_low_bound_arrive = ((coords_of_new - q_nearest->coords).norm() * ((double)this->scene_task.fps) / (this->vmax));
-
-//             // if don't intersect
-//             if ((q_nearest->arrival_time + parent_low_bound_arrive > safe_int.second)) // || (q_nearest->safe_interval.second + parent_low_bound_arrive < safe_int.first))
-
-//             {
-//                 continue;
-//             }
-//             for (int departure_time = arrival_time - parent_low_bound_arrive; departure_time >= q_nearest->arrival_time; departure_time--)
-//             {
-//                 if ((departure_time < q_nearest->arrival_time) || (departure_time > q_nearest->safe_interval.second))
-//                 {
-//                     break;
-//                 }
-//                 // std::cout << "departure_time: " << q_nearest->arrival_time << " " << q_nearest->safe_interval.second << " " << departure_time << std::endl;
-//                 MDP::MSIRRT::Vertex::VertexCoordType last_valid_coord;
-//                 int last_valid_time;
-//                 if (!is_collision_motion(q_nearest->coords, coords_of_new, departure_time, arrival_time, last_valid_coord, last_valid_time))
-//                 {
-//                     // assert(!is_collision_motion(q_nearest->coords, q_nearest->coords, q_nearest->arrival_time, departure_time));
-//                     this->current_tree.add_vertex(MDP::MSIRRT::Vertex(coords_of_new, safe_int), q_nearest, departure_time, arrival_time);
-//                     added_vertices.push_back(&(this->current_tree.array_of_vertices.back()));
-//                     found_parent = true;
-//                     break;
-//                 }
-//                 else
-//                 {
-//                     MDP::MSIRRT::Vertex *q_nearest_to_last_valid = this->get_nearest_node(last_valid_coord, &(this->current_tree)); // find nearest neighbor
-
-//                     MDP::MSIRRT::Vertex::VertexCoordType delta_vector = last_valid_coord - q_nearest_to_last_valid->coords;
-
-//                     delta = delta_vector.norm();
-//                     // std::cout << "delta: " << delta << std::endl;
-//                     if (delta <= (0.1))
-//                     {
-//                         // std::cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" << std::endl; // we don't expect such behavior
-//                         continue;
-//                     }
-//                     std::vector<double> robot_angles(last_valid_coord.data(), last_valid_coord.data() + last_valid_coord.rows() * last_valid_coord.cols());
-
-//                     std::vector<std::pair<int, int>> safe_intervals_of_last_valid_coord = this->collision_manager.get_safe_intervals(robot_angles);
-//                     for (const std::pair<int, int> safe_int : safe_intervals_of_last_valid_coord)
-//                     {
-//                         if (safe_int.first <= last_valid_time && safe_int.second >= last_valid_time)
-//                         {
-//                             this->current_tree->add_vertex(MDP::MSIRRT::Vertex(last_valid_coord, safe_int), q_nearest, departure_time, last_valid_time);
-//                             added_vertices.push_back(&(this->current_tree->array_of_vertices.back()));
-//                             found_parent = true;
-//                             break;
-//                         }
-//                         else if (safe_int.first > last_valid_time){
-//                             break;
-//                         }
-//                     }
-//                     if (found_parent)
-//                     {
-//                         break;
-//                     }
-//                 }
-//             }
-//             if (found_parent)
-//             {
-//                 break;
-//             }
-//         }
-
-//         // if (!found_parent)
-//         // {
-//         //     this->orphan_tree.add_vertex(MDP::MSIRRT::Vertex(coords_of_new, safe_intervals_of_coords_of_new[safe_interval_ind]), nullptr, -1, -1);
-//         // }
-//         safe_interval_ind++;
-//     }
-//     return added_vertices;
-// }
-
-// bool MDP::MSIRRT::PlannerConnect::is_collision_motion(const MDP::MSIRRT::Vertex::VertexCoordType &start_coords, const MDP::MSIRRT::Vertex::VertexCoordType &end_coords, int &start_time, double &end_time, MDP::MSIRRT::Vertex::VertexCoordType &last_valid_coord, double &last_valid_time)
-// {
-
-//     if (start_time > end_time)
-//     {
-//         // std::cout << "start_time > end_time" << std::endl;
-//         return true;
-//     }
-//     MDP::MSIRRT::Vertex::VertexCoordType dir_vector = end_coords - start_coords;
-//     if ((dir_vector.norm() * ((double)this->scene_task.fps) / ((double)(end_time - start_time))) >= this->vmax)
-//     {
-//         // std::cout << "((dir_vector.norm() * ((double)this->scene_task.fps) / ((double)(end_time - start_time))) >= this->vmax)" << std::endl;
-//         return true;
-//     }
-
-//     int interpolation_steps = std::max({(int)(dir_vector.norm() / 0.1), (int)(end_time - start_time + 0.5), 1});
-//     for (int step = 0; step <= interpolation_steps; step++)
-//     {
-
-//         MDP::MSIRRT::Vertex::VertexCoordType temp_coords = start_coords + dir_vector * (double)step / (double)interpolation_steps;
-//         int time_frame = start_time + (double)(end_time - start_time) * (double)step / (double)interpolation_steps;
-
-//         if (this->is_collision_state(temp_coords, time_frame))
-//         {
-//             // std::cout << "is_collision!!" << std::endl;
-
-//             return true;
-//         }
-//     }
-//     return false;
-// }
-
 std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::grow_tree(MDP::MSIRRT::Vertex::VertexCoordType &coord_rand, std::vector<std::pair<int, int>> &safe_intervals_of_coord_rand)
 {
     std::vector<MDP::MSIRRT::Vertex *> result;
@@ -337,209 +191,10 @@ std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::grow_tree(MDP::M
     // std::cout << "find_new_node!" << std::endl;
     // std::cout << "tree size:" << this->start_tree->array_of_vertices.size() << " " << this->goal_tree->array_of_vertices.size() << "  " << this->orphan_tree->array_of_vertices.size() << std::endl;
 
-    while (array_of_new_nodes.size() != 0)
-    {
-        MDP::MSIRRT::Vertex *node = array_of_new_nodes.back();
-        // std::vector<MDP::MSIRRT::Vertex *> rewired_nodes = this->rewire(node); // rewire
-
-        array_of_new_nodes.pop_back();
-        // if (rewired_nodes.size() != 0)
-        // {
-        //     result.reserve(result.size() + std::distance(rewired_nodes.begin(), rewired_nodes.end()));
-        //     result.insert(result.end(), rewired_nodes.begin(), rewired_nodes.end());
-
-        //     array_of_new_nodes.reserve(array_of_new_nodes.size() + std::distance(rewired_nodes.begin(), rewired_nodes.end()));
-        //     array_of_new_nodes.insert(array_of_new_nodes.end(), rewired_nodes.begin(), rewired_nodes.end());
-        // }
-    }
     return result;
 }
 
-std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::rewire(MDP::MSIRRT::Vertex *node)
-{
-
-    std::vector<MDP::MSIRRT::Vertex *> rewired_nodes;
-
-    std::vector<std::pair<MDP::MSIRRT::Vertex *, int>> nearest_nodes = this->get_nearest_node_by_radius(node->coords, 1.2 * this->planner_range * this->planner_range, (this->current_tree));
-    std::vector<std::pair<MDP::MSIRRT::Vertex *, int>> nearest_nodes_orphan_tree = this->get_nearest_node_by_radius(node->coords, 1.2 * this->planner_range * this->planner_range, (this->orphan_tree));
-    nearest_nodes.reserve(nearest_nodes.size() + std::distance(nearest_nodes_orphan_tree.begin(), nearest_nodes_orphan_tree.end()));
-    nearest_nodes.insert(nearest_nodes.end(), nearest_nodes_orphan_tree.begin(), nearest_nodes_orphan_tree.end());
-
-    if (nearest_nodes.size() == 0)
-    {
-        // std::cout << "BBBB" << std::endl;
-    }
-    int max_frame = node->before_rewiring_arrival_time;
-    if (max_frame == -1)
-    {
-        max_frame = node->safe_interval.second;
-    }
-
-    node->before_rewiring_arrival_time = -1;
-
-    // for each candidate
-    if (this->current_tree == this->start_tree)
-    {
-        for (std::pair<MDP::MSIRRT::Vertex *, int> candidate_node : nearest_nodes)
-        {
-            bool is_rewired = false;
-            // assert(candidate_node.first);
-            if (candidate_node.first == node)
-            {
-                continue;
-            }
-            if (candidate_node.first == node->parent)
-            {
-                continue;
-            }
-            if ((candidate_node.first->safe_interval.first == candidate_node.first->arrival_time) && (candidate_node.first->parent)) // Can't do better
-            {
-                continue;
-            }
-            if (candidate_node.first->arrival_time == -1)
-            {
-                candidate_node.first->arrival_time = candidate_node.first->safe_interval.second + 1;
-            }
-
-            // don't overlap
-            if ((!((candidate_node.first->safe_interval.first >= node->arrival_time && candidate_node.first->safe_interval.first <= max_frame) || (candidate_node.first->arrival_time >= node->arrival_time && candidate_node.first->arrival_time <= max_frame) ||
-                   (node->arrival_time >= candidate_node.first->safe_interval.first && node->arrival_time <= candidate_node.first->arrival_time) || (max_frame >= candidate_node.first->safe_interval.first && max_frame <= candidate_node.first->arrival_time))))
-            {
-                continue;
-            }
-
-            MDP::MSIRRT::Vertex::VertexCoordType start_coords = node->coords;
-
-            // for each arrival_time time
-            for (double arrival_time = candidate_node.first->safe_interval.first; arrival_time < candidate_node.first->arrival_time; arrival_time++)
-            {
-                int max_time = std::min(max_frame, (int)arrival_time);
-                for (double departure_time = node->arrival_time; departure_time < max_time; departure_time++)
-                {
-                    // if (departure_time > candidate_node.first->arrival_time)
-                    // {
-                    //     break;
-                    // }
-                    if (!is_collision_motion(start_coords, candidate_node.first->coords, departure_time, arrival_time))
-                    {
-                        // assert(!is_collision_motion(start_coords, start_coords, candidate_node.first->arrival_time, departure_time));
-
-                        if (!candidate_node.first->parent) // if was orphan
-                        {
-                            this->current_tree->add_vertex(*(candidate_node.first), node, departure_time, arrival_time);
-
-                            this->orphan_tree->delete_vertex(candidate_node.second);
-
-                            rewired_nodes.push_back(&(this->current_tree->array_of_vertices.back()));
-                            is_rewired = true;
-                        }
-                        else
-                        {
-                            candidate_node.first->parent = node;
-                            candidate_node.first->before_rewiring_arrival_time = candidate_node.first->arrival_time;
-                            candidate_node.first->arrival_time = arrival_time;
-                        }
-
-                        rewired_nodes.push_back(candidate_node.first);
-                        is_rewired = true;
-                        break;
-                    }
-                }
-                if (is_rewired)
-                {
-                    break;
-                }
-                // assert(!is_collision_motion(start_coords, start_coords, node->arrival_time, departure_time));
-            }
-            if (is_rewired)
-            {
-                continue;
-            }
-        }
-    }
-    else
-    {
-        for (std::pair<MDP::MSIRRT::Vertex *, int> candidate_node : nearest_nodes)
-        {
-            bool is_rewired = false;
-            // assert(candidate_node.first);
-            if (candidate_node.first == node)
-            {
-                continue;
-            }
-            if (candidate_node.first == node->parent)
-            {
-                continue;
-            }
-            if ((candidate_node.first->safe_interval.first == candidate_node.first->arrival_time) && (candidate_node.first->parent)) // Can't do better
-            {
-                continue;
-            }
-            if (candidate_node.first->arrival_time == -1)
-            {
-                candidate_node.first->arrival_time = candidate_node.first->safe_interval.second + 1;
-            }
-            // don't overlap
-            if ((!((candidate_node.first->safe_interval.first >= node->arrival_time && candidate_node.first->safe_interval.first <= max_frame) || (candidate_node.first->arrival_time >= node->arrival_time && candidate_node.first->arrival_time <= max_frame) ||
-                   (node->arrival_time >= candidate_node.first->safe_interval.first && node->arrival_time <= candidate_node.first->arrival_time) || (max_frame >= candidate_node.first->safe_interval.first && max_frame <= candidate_node.first->arrival_time))))
-            {
-                continue;
-            }
-
-            MDP::MSIRRT::Vertex::VertexCoordType start_coords = node->coords;
-
-            // for each arrival_time time
-            for (double arrival_time = candidate_node.first->safe_interval.second; arrival_time > candidate_node.first->arrival_time; arrival_time--)
-            {
-                int min_time = std::max(max_frame, (int)arrival_time);
-                for (double departure_time = node->safe_interval.second; departure_time > min_time; departure_time--)
-                {
-                    // if (departure_time < candidate_node.first->arrival_time)
-                    // {
-                    //     break;
-                    // }
-                    if (!is_collision_motion(candidate_node.first->coords, start_coords, arrival_time, departure_time))
-                    {
-
-                        if (!candidate_node.first->parent) // if was orphan
-                        {
-                            this->current_tree->add_vertex(*(candidate_node.first), node, departure_time, arrival_time);
-
-                            this->orphan_tree->delete_vertex(candidate_node.second);
-
-                            rewired_nodes.push_back(&(this->current_tree->array_of_vertices.back()));
-                            is_rewired = true;
-                        }
-                        else
-                        {
-                            candidate_node.first->parent = node;
-                            candidate_node.first->before_rewiring_arrival_time = candidate_node.first->arrival_time;
-                            candidate_node.first->arrival_time = arrival_time;
-                        }
-
-                        rewired_nodes.push_back(candidate_node.first);
-                        is_rewired = true;
-                        break;
-                    }
-                }
-                if (is_rewired)
-                {
-                    break;
-                }
-                // assert(!is_collision_motion(start_coords, start_coords, node->arrival_time, departure_time));
-            }
-            if (is_rewired)
-            {
-                continue;
-            }
-        }
-    }
-
-    // rewired_nodes.clear();
-    return rewired_nodes;
-}
-
-std::vector<MDP::MSIRRT::Vertex*> MDP::MSIRRT::PlannerConnect::get_final_path() const
+std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::get_final_path() const
 {
     std::vector<MDP::MSIRRT::Vertex *> result;
     if (!this->goal_reached)
@@ -607,7 +262,6 @@ bool MDP::MSIRRT::PlannerConnect::extend(MDP::MSIRRT::Vertex::VertexCoordType &c
     double delta = delta_vector.norm();
     if (delta <= (1 / 100000000)) // zero division check
     {
-        // std::cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" << std::endl;
         return false;
     }
 
@@ -655,11 +309,6 @@ std::vector<std::pair<MDP::MSIRRT::Vertex *, int>> MDP::MSIRRT::PlannerConnect::
 std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::set_parent(MDP::MSIRRT::Vertex::VertexCoordType &coord_rand, std::vector<std::pair<int, int>> &safe_intervals_of_coord_rand)
 {
     std::vector<std::pair<MDP::MSIRRT::Vertex *, int>> nearest_nodes = this->get_nearest_node_by_radius(coord_rand, 9 * this->planner_range * this->planner_range, (this->current_tree));
-
-    if (nearest_nodes.size() == 0)
-    {
-        // std::cout << "BBBB" << std::endl;
-    }
 
     std::vector<MDP::MSIRRT::Vertex *> added_vertices;
     int safe_interval_ind = 0;
@@ -737,10 +386,10 @@ std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::set_parent(MDP::
                 }
             }
 
-            if (!found_parent)
-            {
-                this->orphan_tree->add_vertex(MDP::MSIRRT::Vertex(coord_rand, safe_intervals_of_coord_rand[safe_interval_ind]), nullptr, -1, safe_intervals_of_coord_rand[safe_interval_ind].second + 1);
-            }
+            // if (!found_parent)
+            // {
+            //     this->orphan_tree->add_vertex(MDP::MSIRRT::Vertex(coord_rand, safe_intervals_of_coord_rand[safe_interval_ind]), nullptr, -1, safe_intervals_of_coord_rand[safe_interval_ind].second + 1);
+            // }
             safe_interval_ind++;
         }
     }
@@ -817,19 +466,15 @@ std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::set_parent(MDP::
                 }
             }
 
-            if (!found_parent)
-            {
-                this->orphan_tree->add_vertex(MDP::MSIRRT::Vertex(coord_rand, safe_intervals_of_coord_rand[safe_interval_ind]), nullptr, -1, safe_intervals_of_coord_rand[safe_interval_ind].second + 1);
-            }
+            // if (!found_parent)
+            // {
+            //     this->orphan_tree->add_vertex(MDP::MSIRRT::Vertex(coord_rand, safe_intervals_of_coord_rand[safe_interval_ind]), nullptr, -1, safe_intervals_of_coord_rand[safe_interval_ind].second + 1);
+            // }
             safe_interval_ind++;
         }
     }
 
     return added_vertices;
-}
-
-std::pair<int, int> MDP::MSIRRT::PlannerConnect::calculate_delta(MDP::MSIRRT::Vertex *candidate_node, MDP::MSIRRT::Vertex::VertexCoordType &end_coords, std::vector<std::pair<int, int>> &safe_intervals_of_coord_rand, int &safe_interval_ind)
-{
 }
 
 bool MDP::MSIRRT::PlannerConnect::is_goal(const MDP::MSIRRT::Vertex::VertexCoordType &coord)
@@ -883,7 +528,7 @@ bool MDP::MSIRRT::PlannerConnect::is_collision_motion(const MDP::MSIRRT::Vertex:
     return false;
 }
 
-bool MDP::MSIRRT::PlannerConnect::check_path(std::vector<MDP::MSIRRT::Vertex*> &path)
+bool MDP::MSIRRT::PlannerConnect::check_path(std::vector<MDP::MSIRRT::Vertex *> &path)
 {
 
     for (int node_id = 0; node_id < path.size() - 1; node_id++)
@@ -913,8 +558,8 @@ void MDP::MSIRRT::PlannerConnect::prune_goal_tree()
     MDP::MSIRRT::Vertex *goal_tree_node_child = this->goal_nodes.second;
 
     assert(goal_tree_node_child->parent); // Must have parent, because RRTConnect can't just connect to root node
-    MDP::MSIRRT::Vertex *goal_tree_node = goal_tree_node_child->parent; 
-    
+    MDP::MSIRRT::Vertex *goal_tree_node = goal_tree_node_child->parent;
+
     while (goal_tree_node)
     {
         double time_to_node = (start_tree_node->coords - goal_tree_node->coords).norm() * (double)this->scene_task.fps / this->vmax;
@@ -924,7 +569,7 @@ void MDP::MSIRRT::PlannerConnect::prune_goal_tree()
         // for each departure time
         for (double departure_time = std::max(start_tree_node->arrival_time, (double)goal_tree_node->safe_interval.first - time_to_node); departure_time <= goal_tree_node_child->arrival_time; departure_time += 1)
         {
-            
+
             // assert(!is_collision_motion(start_coords, start_coords, start_tree_node->arrival_time, departure_time));
             double arrival_time = departure_time + time_to_node;
             if (!is_collision_motion(start_coords, goal_tree_node->coords, departure_time, arrival_time))
@@ -935,14 +580,13 @@ void MDP::MSIRRT::PlannerConnect::prune_goal_tree()
                 break;
             }
         }
-        if(!found_dep_time)
+        if (!found_dep_time)
         {
             this->start_tree->add_vertex(MDP::MSIRRT::Vertex(goal_tree_node->coords, goal_tree_node->safe_interval), start_tree_node, goal_tree_node_child->arrival_time, goal_tree_node_child->departure_from_parent_time);
             start_tree_node = &(this->start_tree->array_of_vertices.back());
         }
         goal_tree_node_child = goal_tree_node;
         goal_tree_node = goal_tree_node->parent;
-
     }
     this->finish_node = start_tree_node;
 }
