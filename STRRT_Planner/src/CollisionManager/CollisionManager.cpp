@@ -91,7 +91,7 @@ MDP::CollisionManager::CollisionManager(const MDP::ConfigReader::SceneTask _scen
 
     // construct safeinterval broadphase colliison manager
 
-    hpp::fcl::DynamicAABBTreeArrayCollisionManager *temp = new hpp::fcl::DynamicAABBTreeArrayCollisionManager();
+    hpp::fcl::DynamicAABBTreeCollisionManager *temp = new hpp::fcl::DynamicAABBTreeCollisionManager();
     temp->tree_init_level = 2;
     this->broadphase_manager = temp;
     // get all spheres for all frames_and_ids and set their time
@@ -144,9 +144,6 @@ MDP::CollisionManager::CollisionManager(const MDP::ConfigReader::SceneTask _scen
             {
                 MDP::ObstacleCoordinate obj_position = obstacle->get_position(0);
                 this->by_frame_spheres[frame].push_back(new hpp::fcl::CollisionObject(std::shared_ptr<hpp::fcl::CollisionGeometry>(obj->clone()), obj_position.rotation.toRotationMatrix(), obj_position.pos));
-                // this->frames_and_ids[frame + scene_task.frame_count * obstacle_id].first = frame;
-                // this->frames_and_ids[frame + scene_task.frame_count * obstacle_id].second = obstacle_id;
-                // this->all_spheres.back()->setUserData(this->frames_and_ids + frame + scene_task.frame_count * obstacle_id);
                 this->by_frame_spheres[frame].back()->collisionGeometry()->computeLocalAABB();
                 this->by_frame_spheres[frame].back()->setUserData(this->frames_and_ids + frame + scene_task.frame_count * obstacle_id);
             }
@@ -156,27 +153,13 @@ MDP::CollisionManager::CollisionManager(const MDP::ConfigReader::SceneTask _scen
                 MDP::ObstacleCoordinate obj_position = obstacle->get_position(frame);
                 this->by_frame_spheres[frame].push_back(new hpp::fcl::CollisionObject(std::shared_ptr<hpp::fcl::CollisionGeometry>(obj->clone()), obj_position.rotation.toRotationMatrix(), obj_position.pos));
 
-                // this->frames_and_ids[frame + scene_task.frame_count * obstacle_id].first = frame;
-                // this->frames_and_ids[frame + scene_task.frame_count * obstacle_id].second = obstacle_id;
-                // this->all_spheres.back()->setUserData(this->frames_and_ids + frame + scene_task.frame_count * obstacle_id);
                 this->by_frame_spheres[frame].back()->collisionGeometry()->computeLocalAABB();
                 this->by_frame_spheres[frame].back()->setUserData(this->frames_and_ids + frame + scene_task.frame_count * obstacle_id);
             }
         }
-        // hpp::fcl::Vec3f lower_limit, upper_limit;
+        this->frame_broadphase_managers.push_back(new hpp::fcl::DynamicAABBTreeCollisionManager());
+        static_cast<hpp::fcl::DynamicAABBTreeCollisionManager *>((this->frame_broadphase_managers[frame]))->tree_init_level = 2;
 
-        // hpp::fcl::SpatialHashingCollisionManager<>::computeBound(this->all_spheres, lower_limit, upper_limit);
-        // hpp::fcl::FCL_REAL cell_size =
-        //     std::min(std::min((upper_limit[0] - lower_limit[0]) / 20,
-        //                       (upper_limit[1] - lower_limit[1]) / 20),
-        //              (upper_limit[2] - lower_limit[2]) / 20);
-
-        this->frame_broadphase_managers.push_back(new hpp::fcl::DynamicAABBTreeArrayCollisionManager());
-        static_cast<hpp::fcl::DynamicAABBTreeArrayCollisionManager *>((this->frame_broadphase_managers[frame]))->tree_init_level = 2;
-
-        // this->frame_broadphase_managers.push_back(new hpp::fcl::SpatialHashingCollisionManager<
-        // hpp::fcl::detail::SparseHashTable<hpp::fcl::AABB, hpp::fcl::CollisionObject *, hpp::fcl::detail::SpatialHash>>(
-        // cell_size, lower_limit, upper_limit));
         this->frame_broadphase_managers[frame]->registerObjects(this->by_frame_spheres[frame]);
         this->frame_broadphase_managers[frame]->setup();
     }
@@ -184,9 +167,32 @@ MDP::CollisionManager::CollisionManager(const MDP::ConfigReader::SceneTask _scen
 
 MDP::CollisionManager::~CollisionManager()
 {
+
+    this->broadphase_manager->clear();
+    delete this->broadphase_manager;
+
     for (int i = 0; i < this->obstacles.size(); i++)
     {
-        delete this->obstacles[i];
+        if (this->obstacles[i]->get_type() == "static_box")
+        {
+            delete static_cast<CubeObstaclesFCL *>(this->obstacles[i]);
+        }
+        else if (this->obstacles[i]->get_type() == "dynamic_box")
+        {
+            delete static_cast<CubeObstaclesFCL *>(this->obstacles[i]);
+        }
+        else if (this->obstacles[i]->get_type() == "static_sphere")
+        {
+            delete static_cast<SphereObstaclesFCL *>(this->obstacles[i]);
+        }
+        else if (this->obstacles[i]->get_type() == "dynamic_sphere")
+        {
+            delete static_cast<SphereObstaclesFCL *>(this->obstacles[i]);
+        }
+        else{
+            assert(false);
+        }
+        // delete this->obstacles[i];
     }
 
     this->obstacles.clear();
@@ -206,6 +212,7 @@ MDP::CollisionManager::~CollisionManager()
 
     for (int i = 0; i < this->frame_broadphase_managers.size(); i++)
     {
+        this->frame_broadphase_managers[i]->clear();
         delete this->frame_broadphase_managers[i];
     }
 
@@ -213,7 +220,8 @@ MDP::CollisionManager::~CollisionManager()
 
     delete[] this->positions;
     delete[] this->frames_and_ids;
-    delete this->broadphase_manager;
+    
+
 }
 bool MDP::CollisionManager::check_collision(const std::vector<double> &robot_angles, float &time)
 
@@ -239,17 +247,12 @@ bool MDP::CollisionManager::check_collision_private(const std::vector<double> &r
 
     std::vector<MDP::RobotObstacleFCL::JointCollisionObject> obstacle_joints;
 
-    // bool is_collided = false;
-
     MDP::CollisionCallback collision_callback(&(this->collision_pairs), this->collision_object_count);
     for (int robot_joint_id = 0; robot_joint_id < this->collision_robot_links_count; robot_joint_id++)
     {
         collision_callback.is_collided = false;
         hpp::fcl::CollisionObject joint_coll_obj(main_robot_collision_models[robot_joint_id].collision_object, main_robot_collision_models[robot_joint_id].transform);
         joint_coll_obj.setUserData(new int(robot_joint_id));
-        // std::cout<<&this->collision_pairs<<std::endl;
-        // std::cout <<(robot_joint_id)<<std::endl;
-        // std::cout<<joint_coll_obj.getTransform().getTranslation()<<" "<<((hpp::fcl::Capsule*)(joint_coll_obj.collisionGeometry().get()))->radius<<" "<<((hpp::fcl::Capsule*)(joint_coll_obj.collisionGeometry().get()))->halfLength<<std::endl;
         this->frame_broadphase_managers[frame]->collide(&joint_coll_obj, &collision_callback);
         delete (int *)joint_coll_obj.getUserData();
 
@@ -727,11 +730,10 @@ std::vector<std::pair<int, int>> MDP::CollisionManager::get_safe_intervals(const
     for (int robot_joint_id = 0; robot_joint_id < this->collision_robot_links_count; robot_joint_id++)
     {
         hpp::fcl::CollisionObject joint_coll_obj(main_robot_collision_models[robot_joint_id].collision_object, main_robot_collision_models[robot_joint_id].transform);
-        int *joint_ind = new int(robot_joint_id);
-        joint_coll_obj.setUserData(joint_ind);
+        joint_coll_obj.setUserData(new int(robot_joint_id));
         // std::cout<<"1"<<std::endl;
         this->broadphase_manager->collide(&joint_coll_obj, &collision_callback);
-        delete joint_ind;
+        delete (int *)joint_coll_obj.getUserData();
         // std::cout<<"2"<<std::endl;
     }
 
@@ -1116,5 +1118,9 @@ void MDP::CollisionManager::benchmark_broadphase()
     for (int i = 0; i < results.size(); i++)
     {
         std::cout << i << "manager collide time: " << results[i] << std::endl;
+    }
+
+    for (auto* manager : managers) {
+        delete manager;
     }
 }

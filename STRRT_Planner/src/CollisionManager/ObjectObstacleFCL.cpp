@@ -5,7 +5,7 @@
 #include <config_read_writer/ObstacleJsonInfo.hpp>
 #include <CollisionManager/ObjectObstacleFCL.hpp>
 
-MDP::ObjectObstacleFCL::ObjectObstacleFCL(const std::vector<MDP::ObstacleCoordinate> _positions,const std::string _name, hpp::fcl::ShapeBase* _collision_object,const bool _is_static) : positions(_positions), collision_object(_collision_object), name(_name), is_static(_is_static)
+MDP::ObjectObstacleFCL::ObjectObstacleFCL(const std::vector<MDP::ObstacleCoordinate>& _positions, const std::string& _name, const std::string& _type, hpp::fcl::ShapeBase* _collision_object, const bool& _is_static) : positions(_positions), collision_object(_collision_object), name(_name), type(_type), is_static(_is_static)
 {
     transform.setQuatRotation(this->positions[0].rotation);
     transform.setTranslation(this->positions[0].pos);
@@ -43,6 +43,12 @@ std::string MDP::ObjectObstacleFCL::get_name() const
 {
     return this->name;
 }
+
+std::string MDP::ObjectObstacleFCL::get_type() const
+{
+    return this->type;
+}
+
 MDP::ObstacleCoordinate MDP::ObjectObstacleFCL::get_position(unsigned int frame) const
 {
     assert(frame >= 0);

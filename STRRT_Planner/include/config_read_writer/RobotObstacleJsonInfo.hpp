@@ -36,13 +36,13 @@ namespace MDP
 
         
     private:
-        const std::string name; // name of the obstacle
-        const std::string type; // type of the obstacle ("dynamic_robot")
-        const std::string urdf_file_path;  // path to robot urdf (from MDP folder)
-        const std::vector<std::string> robot_joints_order; // robot joint order, names joints in trajectoryu space vector
+        std::string name; // name of the obstacle
+        std::string type; // type of the obstacle ("dynamic_robot")
+        std::string urdf_file_path;  // path to robot urdf (from MDP folder)
+        std::vector<std::string> robot_joints_order; // robot joint order, names joints in trajectoryu space vector
         std::vector<MDP::ObstacleCoordinate> base_coordinates; // coordinastes of robot's base
-        const std::vector<std::vector<double>> trajectory; // trajectory of robot joints
-        const bool is_static; // if is_static, then robot's base is stationary
+        std::vector<std::vector<double>> trajectory; // trajectory of robot joints
+        bool is_static; // if is_static, then robot's base is stationary
     };
 
 } // namespace MDP

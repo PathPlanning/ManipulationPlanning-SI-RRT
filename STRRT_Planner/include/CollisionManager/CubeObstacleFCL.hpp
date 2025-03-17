@@ -15,7 +15,7 @@ namespace MDP
     class CubeObstaclesFCL: public ObjectObstacleFCL
     {
     public:
-        CubeObstaclesFCL(const std::vector<float> dimension, const std::vector<MDP::ObstacleCoordinate> positions, std::string _name,const bool _is_static);
+        CubeObstaclesFCL(const std::vector<float> dimension, const std::vector<MDP::ObstacleCoordinate> positions, std::string _name, const std::string& _type, const bool _is_static);
         CubeObstaclesFCL(const MDP::CubeObstacleJsonInfo json_obstacle_info);
         ~CubeObstaclesFCL();                                                 // destructor
         CubeObstaclesFCL(const CubeObstaclesFCL &other) = delete;            // copy constructor

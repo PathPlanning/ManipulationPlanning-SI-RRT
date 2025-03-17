@@ -14,7 +14,7 @@ namespace MDP
     class SphereObstaclesFCL : public ObjectObstacleFCL
     {
     public:
-        SphereObstaclesFCL(const float _radius, const std::vector<MDP::ObstacleCoordinate> positions, std::string _name, const bool _is_static);
+        SphereObstaclesFCL(const float _radius, const std::vector<MDP::ObstacleCoordinate> positions, std::string _name, const std::string& _type, const bool _is_static);
         SphereObstaclesFCL(const MDP::SphereObstacleJsonInfo json_obstacle_info);
         ~SphereObstaclesFCL();                                                   // destructor
         SphereObstaclesFCL(const SphereObstaclesFCL &other) = delete;            // copy constructor

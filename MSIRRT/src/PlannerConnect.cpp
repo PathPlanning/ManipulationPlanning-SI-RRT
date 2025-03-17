@@ -497,7 +497,7 @@ bool MDP::MSIRRT::PlannerConnect::is_collision_state(MDP::MSIRRT::Vertex::Vertex
 bool MDP::MSIRRT::PlannerConnect::is_collision_motion(const MDP::MSIRRT::Vertex::VertexCoordType &start_coords, const MDP::MSIRRT::Vertex::VertexCoordType &end_coords, double &start_time, double &end_time)
 {
 
-    if (start_time > end_time)
+    if (start_time >= end_time)
     {
         // std::cout << "start_time > end_time" << std::endl;
         return true;

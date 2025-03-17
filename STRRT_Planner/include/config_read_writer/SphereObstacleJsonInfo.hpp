@@ -25,7 +25,7 @@ namespace MDP
         float get_radius() const;
         
     private:
-        const float radius;
+        float radius;
     };
 
 } // namespace MDP
