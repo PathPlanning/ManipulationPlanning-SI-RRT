@@ -1,15 +1,15 @@
 cmake_minimum_required(VERSION 3.10)
 
 project(MSIRRT_Planner_Planner)
-# set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_BUILD_TYPE Release)
 
-# set(CMAKE_CXX_FLAGS "-march=native -mtune=native -O3 -no-pie")
-# set(CMAKE_C_FLAGS "-march=native -mtune=native -O3 -no-pie")
+set(CMAKE_CXX_FLAGS "-march=native -mtune=native -O3 -no-pie")
+set(CMAKE_C_FLAGS "-march=native -mtune=native -O3 -no-pie")
 
-set(CMAKE_BUILD_TYPE Debug)
+# set(CMAKE_BUILD_TYPE Debug)
 
-set(CMAKE_CXX_FLAGS "-O0 -g3 -fno-omit-frame-pointer -Wall -Wextra  ")
-set(CMAKE_C_FLAGS "-O0 -g3 -fno-omit-frame-pointer -Wall -Wextra  ")
+# set(CMAKE_CXX_FLAGS "-O0 -g3 -fno-omit-frame-pointer -Wall -Wextra  ")
+# set(CMAKE_C_FLAGS "-O0 -g3 -fno-omit-frame-pointer -Wall -Wextra  ")
 
 
 # C++ standard

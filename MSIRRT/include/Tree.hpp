@@ -8,14 +8,14 @@
 namespace MDP::MSIRRT
 {
     struct Tree;
-    typedef nanoflann::KDTreeSingleIndexDynamicAdaptor<nanoflann::L2_Simple_Adaptor<double, MDP::MSIRRT::Tree>, MDP::MSIRRT::Tree, TREE_DIMENSIONALITY> KdTree; // DIM is hardcoded....
+    typedef nanoflann::KDTreeSingleIndexDynamicAdaptor<nanoflann::L2_Simple_Adaptor<double, MDP::MSIRRT::Tree>, MDP::MSIRRT::Tree> KdTree; 
 
     struct Tree
     {
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-        Tree();
-        Tree(const std::string &tree_name_, size_t tree_idx_);
+        Tree(const int& dimensionality);
+        Tree(const std::string &tree_name_, size_t tree_idx_, const int& dimensionality);
         ~Tree();                                     // destructor
         Tree(const Tree &other) = delete;            // copy constructor
         Tree(Tree &&other) = default;                // move constructor

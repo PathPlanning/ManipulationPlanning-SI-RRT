@@ -2,10 +2,10 @@
 #include "Vertex.hpp"
 #include "Tree.hpp"
 
-MDP::MSIRRT::Tree::Tree(const std::string &tree_name_, size_t tree_idx_) : tree_name(tree_name_), tree_idx(tree_idx_),
-                                                                           kd_tree(TREE_DIMENSIONALITY, *this, nanoflann::KDTreeSingleIndexAdaptorParams(25)) {};
+MDP::MSIRRT::Tree::Tree(const std::string &tree_name_, size_t tree_idx_, const int& dimensionality) : tree_name(tree_name_), tree_idx(tree_idx_),
+                                                                           kd_tree(dimensionality, *this, nanoflann::KDTreeSingleIndexAdaptorParams(25)) {};
 
-MDP::MSIRRT::Tree::Tree() : tree_name(""), tree_idx(-1), kd_tree(TREE_DIMENSIONALITY, *this, nanoflann::KDTreeSingleIndexAdaptorParams(25)) {};
+MDP::MSIRRT::Tree::Tree(const int& dimensionality) : tree_name(""), tree_idx(-1), kd_tree(dimensionality, *this, nanoflann::KDTreeSingleIndexAdaptorParams(25)) {};
 
 MDP::MSIRRT::Tree::~Tree() {
 

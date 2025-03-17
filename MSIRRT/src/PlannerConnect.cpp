@@ -8,10 +8,10 @@ MDP::MSIRRT::PlannerConnect::PlannerConnect(MDP::ConfigReader::SceneTask scene_t
                                                                                                          collision_manager(scene_task_), probability_gen(0.0, 1.0),
                                                                                                          gen(random_seed), rd()
 {
-
-    this->start_tree = new MDP::MSIRRT::Tree("start_tree", 0);
-    this->goal_tree = new MDP::MSIRRT::Tree("goal_tree", 1);
-    this->orphan_tree = new MDP::MSIRRT::Tree("orphan_tree", -1);
+    this->dof = scene_task.start_configuration.size();
+    this->start_tree = new MDP::MSIRRT::Tree("start_tree", 0, this->dof);
+    this->goal_tree = new MDP::MSIRRT::Tree("goal_tree", 1, this->dof);
+    this->orphan_tree = new MDP::MSIRRT::Tree("orphan_tree", -1, this->dof);
     this->start_tree->array_of_vertices.reserve(1000000);  // TODO: decide to leave it or remove it
     this->goal_tree->array_of_vertices.reserve(1000000);   // TODO: decide to leave it or remove it
     this->orphan_tree->array_of_vertices.reserve(1000000); // TODO: decide to leave it or remove it
@@ -21,7 +21,7 @@ MDP::MSIRRT::PlannerConnect::PlannerConnect(MDP::ConfigReader::SceneTask scene_t
     assert(is_coords_in_limits(MDP::MSIRRT::Vertex::VertexCoordType(scene_task.start_configuration.data()))); // check start conf bound;
 
     assert(is_coords_in_limits(MDP::MSIRRT::Vertex::VertexCoordType(scene_task.end_configuration.data()))); // check end conf bounds;
-    this->dof = scene_task.start_configuration.size();
+
     std::vector<std::pair<int, int>> start_safe_intervals = this->collision_manager.get_safe_intervals(scene_task.start_configuration); // get start cond save intervals;
 
     // сheck if first start at 0
