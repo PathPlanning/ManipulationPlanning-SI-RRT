@@ -102,9 +102,6 @@ namespace MDP
         std::vector<robot_link_distance_to_obj> get_distances(std::vector<double> robot_angles, float time, bool &is_collision);
         bool check_robot_selfcollision(std::vector<double> robot_angles);
         bool check_base_joints_collisiion(std::vector<double> robot_angles, int last_base_joint_ind);
-        std::vector<std::pair<int, int>> get_safe_intervals_naive(std::vector<double> robot_angles);
-        std::vector<std::pair<int, int>> get_safe_intervals_naive_fastcc(std::vector<double> robot_angles);
-        std::vector<std::pair<int, int>> get_safe_intervals_naive_fastcc_oop(std::vector<double> robot_angles);
         std::vector<std::pair<int, int>> get_safe_intervals(const std::vector<double>& robot_angles);
 
         std::vector<std::pair<float, float>> get_planned_robot_limits() const;
@@ -112,16 +109,9 @@ namespace MDP
         void benchmark_broadphase();
 
     private:
-        bool check_collision_private_naive(std::vector<double> robot_angles, int frame);
         bool check_collision_private(const std::vector<double>& robot_angles, int& frame);
         std::vector<robot_link_distance_to_obj> get_distances_private(std::vector<double> robot_angles, float time, bool &is_collision);
-        std::vector<robot_link_distance_to_obj> get_distances_naive_private(std::vector<double> robot_angles, float time, bool &is_collision);
 
-        void move_dynamic_obstacles(int frame) const;
-        bool collide_objects(const coal::CollisionGeometry *o1, const coal::Transform3s tf1,
-                             const coal::CollisionGeometry *o2, const coal::Transform3s tf2) const;
-        distance measure_distance(const coal::CollisionGeometry *o1, const coal::Transform3s tf1,
-                                  const coal::CollisionGeometry *o2, const coal::Transform3s tf2) const;
 
         std::vector<MDP::ObjectObstacleFCL *> obstacles;
         std::vector<MDP::RobotObstacleFCL> robot_obstacles;
@@ -132,7 +122,9 @@ namespace MDP
         std::vector<coal::ComputeCollision> collision_pairs;
         int frame_count;
         int collision_robot_links_count;
+        int robot_joint_offset;
         int collision_object_count;
+        int robot_obstacle_all_joint_count;
 
         std::pair<int, int> *frames_and_ids;
         std::vector<coal::CollisionObject *> all_spheres;
