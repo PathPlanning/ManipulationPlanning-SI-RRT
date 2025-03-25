@@ -1,11 +1,11 @@
-#include <hpp/fcl/shape/geometric_shapes.h>
+#include <coal/shape/geometric_shapes.h>
 #include <vector>
 #include <cassert>
 #include <config_read_writer/config_read.hpp>
 #include <config_read_writer/ObstacleJsonInfo.hpp>
 #include <CollisionManager/ObjectObstacleFCL.hpp>
 
-MDP::ObjectObstacleFCL::ObjectObstacleFCL(const std::vector<MDP::ObstacleCoordinate>& _positions, const std::string& _name, const std::string& _type, hpp::fcl::ShapeBase* _collision_object, const bool& _is_static) : positions(_positions), collision_object(_collision_object), name(_name), type(_type), is_static(_is_static)
+MDP::ObjectObstacleFCL::ObjectObstacleFCL(const std::vector<MDP::ObstacleCoordinate>& _positions, const std::string& _name, const std::string& _type, coal::ShapeBase* _collision_object, const bool& _is_static) : positions(_positions), collision_object(_collision_object), name(_name), type(_type), is_static(_is_static)
 {
     transform.setQuatRotation(this->positions[0].rotation);
     transform.setTranslation(this->positions[0].pos);
@@ -29,12 +29,12 @@ void MDP::ObjectObstacleFCL::set_position(const MDP::ObstacleCoordinate position
     transform.setTranslation(position.pos);
 }
 
-hpp::fcl::ShapeBase* MDP::ObjectObstacleFCL::get_collision_object()  const
+coal::ShapeBase* MDP::ObjectObstacleFCL::get_collision_object()  const
 {
     return this->collision_object;
 }
 
-hpp::fcl::Transform3f MDP::ObjectObstacleFCL::get_transform() const
+coal::Transform3s MDP::ObjectObstacleFCL::get_transform() const
 {
     return this->transform;
 }

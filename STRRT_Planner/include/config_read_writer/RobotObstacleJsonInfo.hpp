@@ -3,8 +3,8 @@
 #include <vector>
 #include <string>
 #include <Eigen/Core>
-#include "hpp/fcl/collision.h"
-#include "hpp/fcl/collision_data.h"
+#include "coal/collision.h"
+#include "coal/collision_data.h"
 #include <config_read_writer/CubeObstacleJsonInfo.hpp>
 
 //TODO: Add inheritance from ObstacleJsonInfo.

@@ -11,7 +11,7 @@ project(MDP_CollisionManager)
 # C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
-# find_package(hpp-fcl REQUIRED)
+# find_package(coal REQUIRED)
 
 find_package(kdl_parser REQUIRED)
 find_package(orocos_kdl REQUIRED)
@@ -19,5 +19,5 @@ find_package(orocos_kdl REQUIRED)
 
 
 add_library(CollisionManager STATIC "./ObjectObstacleFCL.cpp" "./CubeObstacleFCL.cpp" "./SphereObstacleFCL.cpp" "./RobotObstacleFCL.cpp"  "./CollisionManager.cpp")
-target_link_libraries(CollisionManager PUBLIC urdf orocos-kdl kdl_parser hpp-fcl )  
+target_link_libraries(CollisionManager PUBLIC urdf orocos-kdl kdl_parser coal )  
 target_include_directories(CollisionManager PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include)

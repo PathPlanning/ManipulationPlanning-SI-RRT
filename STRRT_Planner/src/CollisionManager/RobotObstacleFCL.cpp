@@ -1,10 +1,10 @@
-#include <hpp/fcl/shape/geometric_shapes.h>
+#include <coal/shape/geometric_shapes.h>
 #include <vector>
 #include <cassert>
 #include <urdf/model.h>
-#include "hpp/fcl/math/transform.h"
-#include "hpp/fcl/mesh_loader/loader.h"
-#include "hpp/fcl/BVH/BVH_model.h"
+#include "coal/math/transform.h"
+#include "coal/mesh_loader/loader.h"
+#include "coal/BVH/BVH_model.h"
 #include <CollisionManager/RobotObstacleFCL.hpp>
 #include <CollisionManager/CubeObstacleFCL.hpp>
 #include <config_read_writer/config_read.hpp>
@@ -54,8 +54,8 @@ void MDP::RobotObstacleFCL::load_joint_collision_models(const std::string &urdf_
 {
 
     urdf::LinkSharedPtr current_link = model.root_link_;
-    hpp::fcl::NODE_TYPE bv_type = hpp::fcl::BV_AABB;
-    hpp::fcl::MeshLoader loader(bv_type);
+    coal::NODE_TYPE bv_type = coal::BV_AABB;
+    coal::MeshLoader loader(bv_type);
     while (current_link.get())
     {
         if (!current_link->collision.get())
@@ -97,12 +97,12 @@ void MDP::RobotObstacleFCL::load_joint_collision_models(const std::string &urdf_
                 curr_joint->parent_to_joint_origin_transform.rotation.getQuaternion(x, y, z, w);
                 Eigen::Quaterniond q(w, x, y, z);
                 Eigen::Matrix3d joint_origin_rotation = q.toRotationMatrix();
-                this->fk_chain.emplace_back(std::shared_ptr<hpp::fcl::ShapeBase>(nullptr), Eigen::Vector3d::Zero(), Eigen::Matrix3d::Zero(), joint_origin_translation, joint_origin_rotation, current_link->name, curr_joint->name, curr_joint->type != urdf::Joint::FIXED, true);
+                this->fk_chain.emplace_back(std::shared_ptr<coal::ShapeBase>(nullptr), Eigen::Vector3d::Zero(), Eigen::Matrix3d::Zero(), joint_origin_translation, joint_origin_rotation, current_link->name, curr_joint->name, curr_joint->type != urdf::Joint::FIXED, true);
                 current_link = current_link->child_links.at(0);
             }
             else
             {
-                this->fk_chain.emplace_back(std::shared_ptr<hpp::fcl::ShapeBase>(nullptr), Eigen::Vector3d::Zero(), Eigen::Matrix3d::Zero(), Eigen::Vector3d::Zero(), Eigen::Matrix3d::Zero(), current_link->name, "", false, false);
+                this->fk_chain.emplace_back(std::shared_ptr<coal::ShapeBase>(nullptr), Eigen::Vector3d::Zero(), Eigen::Matrix3d::Zero(), Eigen::Vector3d::Zero(), Eigen::Matrix3d::Zero(), current_link->name, "", false, false);
                 this->tip_link_name = current_link->name;
                 current_link = nullptr;
             }
@@ -112,33 +112,33 @@ void MDP::RobotObstacleFCL::load_joint_collision_models(const std::string &urdf_
         {
             const auto mesh_ptr{dynamic_cast<const urdf::Mesh *>(current_link->collision->geometry.get())};
 
-            hpp::fcl::BVHModelPtr_t bvh = loader.load(urdf_root_path + mesh_ptr->filename);
+            coal::BVHModelPtr_t bvh = loader.load(urdf_root_path + mesh_ptr->filename);
             bvh->buildConvexHull(true, "Qt");
-            std::shared_ptr<hpp::fcl::ConvexBase> link_mesh = bvh->convex;
-            // std::shared_ptr<hpp::fcl::ConvexBase> link_mesh = loadConvexMesh(urdf_root_path + mesh_ptr->filename);
+            std::shared_ptr<coal::ConvexBase> link_mesh = bvh->convex;
+            // std::shared_ptr<coal::ConvexBase> link_mesh = loadConvexMesh(urdf_root_path + mesh_ptr->filename);
             link2mesh[current_link->name] = link_mesh;
             collision_objects.push_back(link_mesh);
         }
         else if (current_link->collision->geometry->type == urdf::Geometry::BOX)
         {
             const auto box_ptr{dynamic_cast<const urdf::Box *>(current_link->collision->geometry.get())};
-            std::shared_ptr<hpp::fcl::Box> link_box(new hpp::fcl::Box(box_ptr->dim.x, box_ptr->dim.y, box_ptr->dim.z));
+            std::shared_ptr<coal::Box> link_box(new coal::Box(box_ptr->dim.x, box_ptr->dim.y, box_ptr->dim.z));
             link2mesh[current_link->name] = link_box;
             collision_objects.push_back(link_box);
         }
         else if (current_link->collision->geometry->type == urdf::Geometry::CYLINDER)
         {
             const auto cylinder_ptr{dynamic_cast<const urdf::Cylinder *>(current_link->collision->geometry.get())};
-            // std::shared_ptr<hpp::fcl::Cylinder> link_cylinder(new hpp::fcl::Cylinder(cylinder_ptr->radius,cylinder_ptr->length));
-            std::shared_ptr<hpp::fcl::Capsule> link_cylinder(new hpp::fcl::Capsule(cylinder_ptr->radius, cylinder_ptr->length));
+            // std::shared_ptr<coal::Cylinder> link_cylinder(new coal::Cylinder(cylinder_ptr->radius,cylinder_ptr->length));
+            std::shared_ptr<coal::Capsule> link_cylinder(new coal::Capsule(cylinder_ptr->radius, cylinder_ptr->length));
             link2mesh[current_link->name] = link_cylinder;
             collision_objects.push_back(link_cylinder);
 
-            hpp::fcl::Transform3f origin_transform;
-            hpp::fcl::Vec3f translation(current_link->collision->origin.position.x, current_link->collision->origin.position.y, current_link->collision->origin.position.z);
+            coal::Transform3s origin_transform;
+            coal::Vec3s translation(current_link->collision->origin.position.x, current_link->collision->origin.position.y, current_link->collision->origin.position.z);
             double x{0}, y{0}, z{0}, w{0};
             current_link->collision->origin.rotation.getQuaternion(x, y, z, w);
-            hpp::fcl::Quaternion3f q(w, x, y, z);
+            coal::Quaternion3f q(w, x, y, z);
             origin_transform.setQuatRotation(q);
             origin_transform.setTranslation(translation);
             link2transform[current_link->name] = origin_transform;
@@ -245,17 +245,17 @@ std::vector<MDP::RobotObstacleFCL::JointCollisionObject> MDP::RobotObstacleFCL::
 
         double x{0}, y{0}, z{0}, w{0};
         tf.M.GetQuaternion(x, y, z, w);
-        hpp::fcl::Vec3f t(tf.p[0], tf.p[1], tf.p[2]);
-        hpp::fcl::Quaternion3f q(w, x, y, z);
+        coal::Vec3s t(tf.p[0], tf.p[1], tf.p[2]);
+        coal::Quaternion3f q(w, x, y, z);
 
-        hpp::fcl::Transform3f origin_transform = link2transform[link_name];
+        coal::Transform3s origin_transform = link2transform[link_name];
 
         // URDF order: first translation, then rotation.
         transforms.at(i).setQuatRotation(q);
         // origin_transform.getTranslation() is a translation relative to joint local basis, need to convert to world basis
-        transforms.at(i).setTranslation(hpp::fcl::Vec3f(0, 0, 0));
+        transforms.at(i).setTranslation(coal::Vec3s(0, 0, 0));
 
-        hpp::fcl::Vec3f origin_in_world_basis = transforms.at(i).transform(origin_transform.getTranslation());
+        coal::Vec3s origin_in_world_basis = transforms.at(i).transform(origin_transform.getTranslation());
         transforms.at(i).setTranslation(t + origin_in_world_basis);
         // std::cout<<"joint_translation" <<std::endl;
         // std::cout<<t <<std::endl;
@@ -270,7 +270,7 @@ std::vector<MDP::RobotObstacleFCL::JointCollisionObject> MDP::RobotObstacleFCL::
         // std::cout<<origin_transform.getRotation()<<std::endl;
 
         // DON'T TOUCH OR OPTIMISE!!! EIGEN MULTIPLICATION WORKS CORRECTLY ONLY THIS WAY
-        hpp::fcl::Matrix3f rot = transforms.at(i).getRotation();
+        coal::Matrix3s rot = transforms.at(i).getRotation();
         rot = rot * origin_transform.getRotation();
         transforms.at(i).setRotation(rot);
         ///////
@@ -320,13 +320,13 @@ std::vector<MDP::RobotObstacleFCL::JointCollisionObject> MDP::RobotObstacleFCL::
             continue;
         }
 
-        // hpp::fcl::Quaternion3f q(rotation);
+        // coal::Quaternion3f q(rotation);
 
         // URDF order: first translation, then rotation.
         // transforms.at(link_id).setQuatRotation(q);
         // origin_transform.getTranslation() is a translation relative to joint local basis, need to convert to world basis
 
-        hpp::fcl::Vec3f origin_in_world_basis = rotation*this->fk_chain[i].link_origin_translation;
+        coal::Vec3s origin_in_world_basis = rotation*this->fk_chain[i].link_origin_translation;
         transforms.at(link_id).setTranslation(translation + origin_in_world_basis);
         // std::cout << "link_name: " + link_name << std::endl;
 
@@ -395,7 +395,7 @@ std::vector<std::pair<float, float>> MDP::RobotObstacleFCL::get_limits() const
     return limits;
 }
 
-std::vector<std::shared_ptr<hpp::fcl::ShapeBase>> MDP::RobotObstacleFCL::get_geometric_shapes()
+std::vector<std::shared_ptr<coal::ShapeBase>> MDP::RobotObstacleFCL::get_geometric_shapes()
 {
     return collision_objects;
 }

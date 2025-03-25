@@ -1,5 +1,5 @@
 #pragma once
-#include <hpp/fcl/shape/geometric_shapes.h>
+#include <coal/shape/geometric_shapes.h>
 #include <vector>
 #include <Eigen/Core>
 #include <CollisionManager/RobotObstacleFCL.hpp>
@@ -26,6 +26,6 @@ namespace MDP
 
     private:
         const float radius;
-        hpp::fcl::Sphere *sphere;
+        coal::Sphere *sphere;
     };
 }

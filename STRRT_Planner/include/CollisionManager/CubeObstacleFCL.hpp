@@ -1,6 +1,6 @@
 #pragma once
 
-#include <hpp/fcl/shape/geometric_shapes.h>
+#include <coal/shape/geometric_shapes.h>
 #include <vector>
 #include <Eigen/Core>
 #include <CollisionManager/RobotObstacleFCL.hpp>
@@ -25,7 +25,7 @@ namespace MDP
 
 
     private:
-        hpp::fcl::Box* box;
+        coal::Box* box;
         std::vector<float> dimension;
     };
 }

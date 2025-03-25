@@ -3,8 +3,8 @@
 #include <vector>
 #include <string>
 #include <Eigen/Core>
-#include "hpp/fcl/collision.h"
-#include "hpp/fcl/collision_data.h"
+#include "coal/collision.h"
+#include "coal/collision_data.h"
 namespace MDP
 {
 
@@ -13,12 +13,12 @@ namespace MDP
         const float x;
         const float y;
         const float z;
-        const hpp::fcl::Vec3f pos;
+        const coal::Vec3s pos;
         const float quat_x;
         const float quat_y;
         const float quat_z;
         const float quat_w;
-        const hpp::fcl::Quaternion3f rotation;
+        const coal::Quaternion3f rotation;
         const float time_millisec;
         const int frame;
         ObstacleCoordinate(float _x, float _y, float _z,

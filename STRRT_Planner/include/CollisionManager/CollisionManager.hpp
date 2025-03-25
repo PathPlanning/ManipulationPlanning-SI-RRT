@@ -8,56 +8,56 @@
 #include <config_read_writer/config_read.hpp>
 #include <config_read_writer/CubeObstacleJsonInfo.hpp>
 #include <config_read_writer/ObstacleJsonInfo.hpp>
-#include "hpp/fcl/broadphase/broadphase_bruteforce.h"
-#include "hpp/fcl/broadphase/broadphase_spatialhash.h"
-#include "hpp/fcl/broadphase/broadphase_SaP.h"
-#include "hpp/fcl/broadphase/broadphase_SSaP.h"
-#include "hpp/fcl/broadphase/broadphase_interval_tree.h"
-#include "hpp/fcl/broadphase/broadphase_dynamic_AABB_tree.h"
-#include "hpp/fcl/broadphase/broadphase_dynamic_AABB_tree_array.h"
-#include "hpp/fcl/broadphase/default_broadphase_callbacks.h"
-#include "hpp/fcl/broadphase/detail/sparse_hash_table.h"
-#include "hpp/fcl/broadphase/detail/spatial_hash.h"
-#include "hpp/fcl/broadphase/broadphase_callbacks.h"
+#include "coal/broadphase/broadphase_bruteforce.h"
+#include "coal/broadphase/broadphase_spatialhash.h"
+#include "coal/broadphase/broadphase_SaP.h"
+#include "coal/broadphase/broadphase_SSaP.h"
+#include "coal/broadphase/broadphase_interval_tree.h"
+#include "coal/broadphase/broadphase_dynamic_AABB_tree.h"
+#include "coal/broadphase/broadphase_dynamic_AABB_tree_array.h"
+#include "coal/broadphase/default_broadphase_callbacks.h"
+#include "coal/broadphase/detail/sparse_hash_table.h"
+#include "coal/broadphase/detail/spatial_hash.h"
+#include "coal/broadphase/broadphase_callbacks.h"
 
 namespace MDP
 {
-    struct SafeIntervalCollisionCallback : hpp::fcl::CollisionCallBackBase
+    struct SafeIntervalCollisionCallback : coal::CollisionCallBackBase
     {
-        SafeIntervalCollisionCallback(std::vector<hpp::fcl::ComputeCollision> *collision_pairs_, int collision_object_count_) : collision_pairs(collision_pairs_),
+        SafeIntervalCollisionCallback(std::vector<coal::ComputeCollision> *collision_pairs_, int collision_object_count_) : collision_pairs(collision_pairs_),
                                                                                                                                 collision_object_count(collision_object_count_) {};
 
         void init() {}
-        std::vector<hpp::fcl::ComputeCollision> *collision_pairs;
-        bool collide(hpp::fcl::CollisionObject *o1, hpp::fcl::CollisionObject *o2);
+        std::vector<coal::ComputeCollision> *collision_pairs;
+        bool collide(coal::CollisionObject *o1, coal::CollisionObject *o2);
         int collision_object_count;
         std::vector<int> frames_in_collision;
 
         ~SafeIntervalCollisionCallback() {};
     };
 
-    struct CollisionCallback : hpp::fcl::CollisionCallBackBase
+    struct CollisionCallback : coal::CollisionCallBackBase
     {
-        CollisionCallback(std::vector<hpp::fcl::ComputeCollision> *collision_pairs_, int collision_object_count_) : collision_pairs(collision_pairs_),
+        CollisionCallback(std::vector<coal::ComputeCollision> *collision_pairs_, int collision_object_count_) : collision_pairs(collision_pairs_),
                                                                                                                                 collision_object_count(collision_object_count_) {};
 
         void init() {this->is_collided=false;}
-        std::vector<hpp::fcl::ComputeCollision> *collision_pairs;
-        bool collide(hpp::fcl::CollisionObject *o1, hpp::fcl::CollisionObject *o2);
+        std::vector<coal::ComputeCollision> *collision_pairs;
+        bool collide(coal::CollisionObject *o1, coal::CollisionObject *o2);
         int collision_object_count;
         bool is_collided = false;
 
         ~CollisionCallback() {};
     };
 
-    struct DistanceCallback : hpp::fcl::DistanceCallBackBase
+    struct DistanceCallback : coal::DistanceCallBackBase
     {
-        DistanceCallback(std::vector<hpp::fcl::ComputeCollision> *collision_pairs_, int collision_object_count_) : collision_pairs(collision_pairs_),
+        DistanceCallback(std::vector<coal::ComputeCollision> *collision_pairs_, int collision_object_count_) : collision_pairs(collision_pairs_),
                                                                                                                                 collision_object_count(collision_object_count_) {};
 
         void init() {this->is_collided=false;dist = 1000000000000000;robot_links_points.clear();obj_points.clear();}
-        std::vector<hpp::fcl::ComputeCollision> *collision_pairs;
-        bool distance(hpp::fcl::CollisionObject* o1, hpp::fcl::CollisionObject* o2, hpp::fcl::FCL_REAL& dist) override; 
+        std::vector<coal::ComputeCollision> *collision_pairs;
+        bool distance(coal::CollisionObject* o1, coal::CollisionObject* o2, coal::Scalar& dist) override; 
         std::vector<Eigen::Vector3d> robot_links_points;
         std::vector<Eigen::Vector3d> obj_points;
         int collision_object_count;
@@ -118,27 +118,27 @@ namespace MDP
         std::vector<robot_link_distance_to_obj> get_distances_naive_private(std::vector<double> robot_angles, float time, bool &is_collision);
 
         void move_dynamic_obstacles(int frame) const;
-        bool collide_objects(const hpp::fcl::CollisionGeometry *o1, const hpp::fcl::Transform3f tf1,
-                             const hpp::fcl::CollisionGeometry *o2, const hpp::fcl::Transform3f tf2) const;
-        distance measure_distance(const hpp::fcl::CollisionGeometry *o1, const hpp::fcl::Transform3f tf1,
-                                  const hpp::fcl::CollisionGeometry *o2, const hpp::fcl::Transform3f tf2) const;
+        bool collide_objects(const coal::CollisionGeometry *o1, const coal::Transform3s tf1,
+                             const coal::CollisionGeometry *o2, const coal::Transform3s tf2) const;
+        distance measure_distance(const coal::CollisionGeometry *o1, const coal::Transform3s tf1,
+                                  const coal::CollisionGeometry *o2, const coal::Transform3s tf2) const;
 
         std::vector<MDP::ObjectObstacleFCL *> obstacles;
         std::vector<MDP::RobotObstacleFCL> robot_obstacles;
         MDP::RobotObstacleFCL planned_robot;
         MDP::ConfigReader::SceneTask scene_task;
 
-        hpp::fcl::Transform3f *positions; // for cache optimisation. array, with struct [frame1[obj1[x,y,z,qx,qy,qz,w],obj2[x,y,z,qx,qy,qz,w].,.], frame2[...],..]
-        std::vector<hpp::fcl::ComputeCollision> collision_pairs;
+        coal::Transform3s *positions; // for cache optimisation. array, with struct [frame1[obj1[x,y,z,qx,qy,qz,w],obj2[x,y,z,qx,qy,qz,w].,.], frame2[...],..]
+        std::vector<coal::ComputeCollision> collision_pairs;
         int frame_count;
         int collision_robot_links_count;
         int collision_object_count;
 
         std::pair<int, int> *frames_and_ids;
-        std::vector<hpp::fcl::CollisionObject *> all_spheres;
-        hpp::fcl::BroadPhaseCollisionManager *broadphase_manager;
+        std::vector<coal::CollisionObject *> all_spheres;
+        coal::BroadPhaseCollisionManager *broadphase_manager;
 
-        std::vector<hpp::fcl::BroadPhaseCollisionManager *>frame_broadphase_managers;
-        std::vector<std::vector<hpp::fcl::CollisionObject *>> by_frame_spheres;
+        std::vector<coal::BroadPhaseCollisionManager *>frame_broadphase_managers;
+        std::vector<std::vector<coal::CollisionObject *>> by_frame_spheres;
     };
 }

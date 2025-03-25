@@ -1,5 +1,5 @@
 #pragma once
-#include <hpp/fcl/shape/geometric_shapes.h>
+#include <coal/shape/geometric_shapes.h>
 #include <vector>
 #include <Eigen/Core>
 #include <config_read_writer/config_read.hpp>
@@ -23,10 +23,10 @@ namespace MDP
         {
 
             std::string name;
-            std::shared_ptr<hpp::fcl::CollisionGeometry> collision_object;
-            hpp::fcl::Transform3f transform;
+            std::shared_ptr<coal::CollisionGeometry> collision_object;
+            coal::Transform3s transform;
             int joint_number;
-            JointCollisionObject(std::string _name, std::shared_ptr<hpp::fcl::CollisionGeometry> _collision_object, hpp::fcl::Transform3f _transform, unsigned int _joint_number) : name(_name), collision_object(_collision_object), transform(_transform), joint_number(_joint_number) {};
+            JointCollisionObject(std::string _name, std::shared_ptr<coal::CollisionGeometry> _collision_object, coal::Transform3s _transform, unsigned int _joint_number) : name(_name), collision_object(_collision_object), transform(_transform), joint_number(_joint_number) {};
             ~JointCollisionObject() = default;                                 // destructor
             JointCollisionObject(const JointCollisionObject &other) = default; // copy constructor
             JointCollisionObject(JointCollisionObject &&other) = default;      // move constructor
@@ -36,7 +36,7 @@ namespace MDP
         };
         struct ForwardKinematicChain
         {
-            ForwardKinematicChain(std::shared_ptr<hpp::fcl::ShapeBase> link_mesh_,
+            ForwardKinematicChain(std::shared_ptr<coal::ShapeBase> link_mesh_,
                                   const Eigen::Vector3d link_origin_translation_,
                                   const Eigen::Matrix3d link_origin_rotation_,
                                   const Eigen::Vector3d joint_origin_translation_,
@@ -49,7 +49,7 @@ namespace MDP
                                                           joint_origin_rotation(joint_origin_rotation_), link_name(link_name_), joint_name(joint_name_),
                                                           not_fixed(not_fixed_), has_next(has_next_) {};
 
-            std::shared_ptr<hpp::fcl::ShapeBase> link_mesh;
+            std::shared_ptr<coal::ShapeBase> link_mesh;
             const Eigen::Vector3d link_origin_translation;
             const Eigen::Matrix3d link_origin_rotation;
             const Eigen::Vector3d joint_origin_translation;
@@ -71,12 +71,12 @@ namespace MDP
 
         // void set_position(const unsigned int frame);
         // void set_position(const MDP::ObstacleCoordinate position);
-        // hpp::fcl::Box& get_collision_object() const;
+        // coal::Box& get_collision_object() const;
         std::vector<MDP::RobotObstacleFCL::JointCollisionObject> get_collision_object_for_robot_angles(const std::vector<double> angles);
         std::vector<MDP::RobotObstacleFCL::JointCollisionObject> get_collision_object_for_frame(const long long frame);
 
-        std::vector<std::shared_ptr<hpp::fcl::ShapeBase>> get_geometric_shapes();
-        hpp::fcl::Transform3f &get_transform() const;
+        std::vector<std::shared_ptr<coal::ShapeBase>> get_geometric_shapes();
+        coal::Transform3s &get_transform() const;
 
         void set_trajectory(const std::vector<std::vector<double>> _trajectory);
         std::vector<std::pair<float, float>> get_limits() const;
@@ -88,7 +88,7 @@ namespace MDP
 
         KDL::Frame initial_base_frame;
         std::string urdf_path;
-        mutable std::vector<hpp::fcl::Transform3f> transforms;
+        mutable std::vector<coal::Transform3s> transforms;
         urdf::Model model{};
         const std::vector<std::string> robot_joint_order;
         std::vector<MDP::ObstacleCoordinate> base_position;
@@ -98,13 +98,13 @@ namespace MDP
         void load_kdl_tree(const std::string &urdf_path);
         void load_urdf_from_file(const std::string &urdf_path);
         void load_joint_collision_models(const std::string &urdf_root_path);
-        // std::shared_ptr<hpp::fcl::ShapeBase> loadConvexMesh(const std::string &file_name);
+        // std::shared_ptr<coal::ShapeBase> loadConvexMesh(const std::string &file_name);
 
-        std::map<std::string, std::shared_ptr<hpp::fcl::ShapeBase>> link2mesh;
-        std::map<std::string, hpp::fcl::Transform3f> link2transform;
+        std::map<std::string, std::shared_ptr<coal::ShapeBase>> link2mesh;
+        std::map<std::string, coal::Transform3s> link2transform;
         std::map<std::string, int> joint_name2ind;
         std::map<std::string, std::pair<float, float>> joint_name2limits;
-        std::vector<std::shared_ptr<hpp::fcl::ShapeBase>> collision_objects;
+        std::vector<std::shared_ptr<coal::ShapeBase>> collision_objects;
         std::string tip_link_name;
         unsigned int degrees_of_freedom;
         KDL::Tree robot_tree;

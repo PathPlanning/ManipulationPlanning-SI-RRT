@@ -360,13 +360,18 @@ std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::set_parent(MDP::
                     // fix rounding errors
                     if (arrival_time > safe_intervals_of_coord_rand[safe_interval_ind].second)
                     {
+                        //TODO: Check, if this breaks everything
                         departure_time -= arrival_time - safe_intervals_of_coord_rand[safe_interval_ind].second;
-                        arrival_time -= arrival_time - safe_intervals_of_coord_rand[safe_interval_ind].second;
+                        if(departure_time <candidate_node.first->arrival_time){
+                            continue;
+                        }
+                        arrival_time =  safe_intervals_of_coord_rand[safe_interval_ind].second;
                     }
                     if (arrival_time < safe_intervals_of_coord_rand[safe_interval_ind].first)
                     {
-                        departure_time += safe_intervals_of_coord_rand[safe_interval_ind].first - arrival_time;
-                        arrival_time += safe_intervals_of_coord_rand[safe_interval_ind].first - arrival_time;
+                        // departure_time += safe_intervals_of_coord_rand[safe_interval_ind].first - arrival_time;
+                        arrival_time = safe_intervals_of_coord_rand[safe_interval_ind].first;
+
                     }
                     if (!is_collision_motion(start_coords, coord_rand, departure_time, arrival_time))
                     {
@@ -441,13 +446,16 @@ std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::set_parent(MDP::
                     // fix rounding errors
                     if (arrival_time > safe_intervals_of_coord_rand[safe_interval_ind].second)
                     {
-                        departure_time -= arrival_time - safe_intervals_of_coord_rand[safe_interval_ind].second;
-                        arrival_time -= arrival_time - safe_intervals_of_coord_rand[safe_interval_ind].second;
+                        // departure_time -= arrival_time - safe_intervals_of_coord_rand[safe_interval_ind].second;
+                        arrival_time = safe_intervals_of_coord_rand[safe_interval_ind].second;
                     }
                     if (arrival_time < safe_intervals_of_coord_rand[safe_interval_ind].first)
                     {
                         departure_time += safe_intervals_of_coord_rand[safe_interval_ind].first - arrival_time;
-                        arrival_time += safe_intervals_of_coord_rand[safe_interval_ind].first - arrival_time;
+                        if(departure_time >candidate_node.first->arrival_time){
+                            continue;
+                        }
+                        arrival_time = safe_intervals_of_coord_rand[safe_interval_ind].first;
                     }
                     if (!is_collision_motion(coord_rand, start_coords, arrival_time, departure_time))
                     {
