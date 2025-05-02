@@ -48,6 +48,17 @@ void MDP::ResultsWriter::solver_end()
     algorithm_solving_time.pause_timer();
 }
 
+void MDP::ResultsWriter::safe_interval_construction_start(){
+    this->collision_check_safe_interval_caching_time.reset();
+
+}
+void MDP::ResultsWriter::safe_interval_construction_end(){
+    assert(this->collision_check_safe_interval_caching_time.get_is_running());
+    this->collision_check_safe_interval_caching_time.pause_timer();
+
+}
+
+
 // NOTE!!! rapidjson::Value does not have copy constructor, only move constructor!!!
 void MDP::ResultsWriter::save_json(const std::string file_name, rapidjson::Value &additional_final_planner_metadata, int random_seed)
 {
@@ -77,6 +88,7 @@ void MDP::ResultsWriter::save_json(const std::string file_name, rapidjson::Value
     data_to_export.AddMember("forward_kinematics_in_collision_check_time_ns", this->algorithm_forward_kinematics_in_collision_check_time.get_elapsed_time_ns(), allocator);
     data_to_export.AddMember("forward_kinematics_in_distance_check_time_ns", this->algorithm_forward_kinematics_in_distance_check_time.get_elapsed_time_ns(), allocator);
     data_to_export.AddMember("total_forward_kinematics_time_ns", this->algorithm_forward_kinematics_check_time.get_elapsed_time_ns(), allocator);
+    data_to_export.AddMember("collision_check_safe_interval_caching_time_ns", this->collision_check_safe_interval_caching_time.get_elapsed_time_ns(), allocator);
     data_to_export.AddMember("number_of_collision_checks", this->collision_check_counter, allocator);
     // data_to_export.AddMember("number_of_broadphase_collision_checks", 0, allocator); // TODO Replace with actual
     // data_to_export.AddMember("number_of_narrowphase_collision_checks", 0, allocator); // TODO Replace with actual

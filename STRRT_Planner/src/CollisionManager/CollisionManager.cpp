@@ -90,7 +90,7 @@ MDP::CollisionManager::CollisionManager(const MDP::ConfigReader::SceneTask _scen
     }
 
     // construct safeinterval broadphase colliison manager
-
+    ResultsWriter::get_instance().safe_interval_construction_start();
     hpp::fcl::DynamicAABBTreeArrayCollisionManager *temp = new hpp::fcl::DynamicAABBTreeArrayCollisionManager();
     temp->tree_init_level = 2;
     this->broadphase_manager = temp;
@@ -180,6 +180,9 @@ MDP::CollisionManager::CollisionManager(const MDP::ConfigReader::SceneTask _scen
         this->frame_broadphase_managers[frame]->registerObjects(this->by_frame_spheres[frame]);
         this->frame_broadphase_managers[frame]->setup();
     }
+
+    ResultsWriter::get_instance().safe_interval_construction_end();
+
 }
 
 MDP::CollisionManager::~CollisionManager()

@@ -93,6 +93,8 @@ namespace MDP
         void algorithm_start();
         void config_end();
         void solver_end();
+        void safe_interval_construction_start();
+        void safe_interval_construction_end();
 
         template <typename F, typename... Args>
         std::result_of_t<F && (Args && ...)> timer_function_wrapper(Timer &timer, F &&fn, Args &&...args);
@@ -151,6 +153,8 @@ namespace MDP
         Timer algorithm_forward_kinematics_in_distance_check_time{"algorithm_forward_kinematics_in_distance_check_time"};   // time in solving forward kinematics
         Timer algorithm_forward_kinematics_check_time{"algorithm_forward_kinematics_check_time"};                           // time in solving forward kinematics
         Timer algorithm_solving_time{"algorithm_solving_time"};                                                             // time spend by planner->solve function
+        Timer collision_check_safe_interval_caching_time{"collision_check_safe_interval_caching_time"};                               // time spend in CollisionManager constructor in safe interval caching
+
 
         uint64_t collision_check_counter;
         uint64_t distance_check_counter;
