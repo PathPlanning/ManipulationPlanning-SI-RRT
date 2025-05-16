@@ -1,9 +1,7 @@
 import bpy
-import mathutils
-import math,os
-from typing import Mapping, MutableMapping, Sequence, Optional
+import os
+from typing import Sequence, Optional
 import json
-import time
 import functools
 def get_path_from_file(path_file:str)->list[tuple[float,list]]:
     """Get path from file
@@ -20,7 +18,7 @@ def get_path_from_file(path_file:str)->list[tuple[float,list]]:
         for line in f:
             path_str, time_str = line.split(';')
             time = float(time_str)
-            q = list2 = [float(x) for x in path_str[1:-1].split() if x]
+            q  = [float(x) for x in path_str[1:-1].split() if x]
             path_time.append((time,q))
     return path_time
 
@@ -39,7 +37,7 @@ def move_robot(robot_name:str,angles:Sequence[float],joint_order:tuple[str],fram
     """
     assert(len(angles) == len(joint_order))
     bpy.context.view_layer.objects.active = bpy.data.objects[robot_name]
-    bones = [bpy.context.view_layer.objects.active.pose.bones[bone_name] for bone_name in joint_order]
+    bones = [bpy.context.view_layer.objects[robot_name].pose.bones[bone_name] for bone_name in joint_order]
     
     for joint, angle in zip(bones, angles):
         joint.rotation_euler = (0.0,angle,0.0)
@@ -85,8 +83,8 @@ def open_json(json_path:str)->dict:
 
 def animate_path(manipulator_path,fps,joint_order):
 
-    for  time,path in manipulator_path:
-        move_robot("robot",path,frame = int(time*fps), joint_order = joint_order)
+    for  state in manipulator_path:
+        move_robot("robot",state["robot_angles"],frame = int(state["time"]*fps), joint_order = joint_order)
 
 
 def main(path_to_log_file:str):
@@ -96,8 +94,8 @@ def main(path_to_log_file:str):
     planner_logs = open_json(path_to_log_file)#parse json file\
         
     #get blender file
-    scene_task = open_json("C:/Users/kerim/Desktop/git/Manipulator-Dynamic-Planning/"+planner_logs["path_to_scene_json"])
-    blender_file_path = scene_task["blender_file_path"]
+    scene_task = open_json("C:/Users/kerim/Desktop/git/Manipulator-Dynamic-Planning/Blender/scripts/50_spheres/test_number_49/scene_task.json")
+    # blender_file_path = scene_task["blender_file_path"]
     
 
     joint_order = scene_task['robot_joints_order']
@@ -106,7 +104,7 @@ def main(path_to_log_file:str):
     move_robot("robot_goal_pos",scene_task["end_configuration"],joint_order,0)
     #strrt_config = open_json(planner_logs["path_to_strrt_config_json"])#get strrt config
     
-    manipulator_path = planner_logs["path"]#get manipulator path
+    manipulator_path = planner_logs["final_planner_data"]["final_path"]#get manipulator path
     
     
     animation_callback = functools.partial(animate_path,manipulator_path,scene_task['fps'],joint_order)
@@ -114,6 +112,6 @@ def main(path_to_log_file:str):
     
         
 if __name__=="__main__":
-    path_to_log_file = "C:/Users/kerim/Desktop/git/Manipulator-Dynamic-Planning/drgbt_logs_flying_box_simplified.json"
+    path_to_log_file = "./Blender/scripts/50_spheres/test_number_49/res"
     assert(os.path.isfile(path_to_log_file),"no input json is given!")
     main(path_to_log_file)
