@@ -38,3 +38,5 @@ build/
 drgbt_test.log
 
 tests/
+
+.venv/
