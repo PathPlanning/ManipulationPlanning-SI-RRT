@@ -40,6 +40,11 @@ MDP::MSIRRT::PlannerConnect::PlannerConnect(MDP::ConfigReader::SceneTask scene_t
     this->goal_coords = MDP::MSIRRT::Vertex::VertexCoordType(scene_task.end_configuration.data());
     this->goal_safe_intervals = this->collision_manager.get_safe_intervals(scene_task.end_configuration);
 
+    assert(this->goal_safe_intervals.size()>0);
+    if (this->goal_safe_intervals.size()==0){
+        std::cout<<"this->goal_safe_intervals.size()==0" <<std::endl;
+        std::exit(1);
+    }
     this->goal_tree->add_vertex(this->goal_coords, this->goal_safe_intervals.back(), nullptr, -1, this->goal_safe_intervals.back().second);
     // сheck if the latest safe interval at goal is safe
     assert(this->goal_safe_intervals.back().second == scene_task.frame_count - 1);
@@ -452,7 +457,7 @@ std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::set_parent(MDP::
                     if (arrival_time < safe_intervals_of_coord_rand[safe_interval_ind].first)
                     {
                         departure_time += safe_intervals_of_coord_rand[safe_interval_ind].first - arrival_time;
-                        if(departure_time >candidate_node.first->arrival_time){
+                        if(departure_time < candidate_node.first->arrival_time){
                             continue;
                         }
                         arrival_time = safe_intervals_of_coord_rand[safe_interval_ind].first;
@@ -511,9 +516,10 @@ bool MDP::MSIRRT::PlannerConnect::is_collision_motion(const MDP::MSIRRT::Vertex:
         return true;
     }
     MDP::MSIRRT::Vertex::VertexCoordType dir_vector = end_coords - start_coords;
-    if ((dir_vector.norm() * ((double)this->scene_task.fps) / ((double)(end_time - start_time))) > this->vmax)
+    if ((dir_vector.norm() * ((double)this->scene_task.fps) / ((double)(end_time - start_time))) > (this->vmax+0.001)) // We need 0.001 to fix floating point comparison errors.
     {
-        // std::cout << "((dir_vector.norm() * ((double)this->scene_task.fps) / ((double)(end_time - start_time))) >= this->vmax)" << std::endl;
+        std::cout << "((dir_vector.norm() * ((double)this->scene_task.fps) / ((double)(end_time - start_time))) >= this->vmax)" << std::endl;
+        std::cout <<std::fixed <<std::setprecision(15) <<(dir_vector.norm() * ((double)this->scene_task.fps) / ((double)(end_time - start_time)))<< " "<< dir_vector.norm() << " " << (double)this->scene_task.fps << " " << ((double)(end_time - start_time)) << " "<<std::fixed <<std::setprecision(15)<< this->vmax  << std::endl;
         return true;
     }
 

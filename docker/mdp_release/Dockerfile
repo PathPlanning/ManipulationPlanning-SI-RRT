@@ -83,9 +83,9 @@ RUN git clone --recursive https://github.com/Tencent/rapidjson.git && \
     make install && \
     cd ../..  && \
 
-    # Install hpp-fcl
-    git clone --recursive https://github.com/humanoid-path-planner/hpp-fcl.git  && \
-    cd hpp-fcl  && \
+    # Install coal
+    git clone --recursive https://github.com/humanoid-path-planner/coal.git  && \
+    cd coal  && \
     . /opt/ros/humble/setup.sh && \
     rosdep init && \
     rosdep update && \

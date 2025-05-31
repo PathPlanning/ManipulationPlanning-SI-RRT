@@ -294,9 +294,13 @@ std::vector<MDP::RobotObstacleFCL::JointCollisionObject> MDP::RobotObstacleFCL::
     std::vector<JointCollisionObject> result;
     Eigen::Vector3d translation;
     translation.setZero();
-    Eigen::Matrix3d rotation;
-    rotation.setZero();
-    rotation.diagonal() << 1, 1, 1;
+    translation[0] = this->base_position[0].x;
+    translation[1] = this->base_position[0].y;
+    translation[2] = this->base_position[0].z;
+    Eigen::Matrix3d rotation(this->base_position[0].rotation.toRotationMatrix());
+    // rotation.setZero();
+    // rotation.
+    // rotation.diagonal() << 1, 1, 1;
     int dof = 0;
     int link_id = 0;
     for (size_t i = 0; i < this->fk_chain.size(); i++)

@@ -80,7 +80,7 @@ MDP::CollisionManager::CollisionManager(const MDP::ConfigReader::SceneTask _scen
     }
     // fill collision pairs
     std::vector<MDP::RobotObstacleFCL::JointCollisionObject> robot_joints = this->planned_robot.get_collision_object_for_robot_angles(scene_task.start_configuration);
-    this->collision_robot_links_count = 6;
+    this->collision_robot_links_count = robot_joints.size();
     this->robot_joint_offset = 0;
 
     for (int robot_joint_id = 0; robot_joint_id < this->collision_robot_links_count; robot_joint_id++)
@@ -513,13 +513,13 @@ bool MDP::CollisionCallback::collide(coal::CollisionObject *o1, coal::CollisionO
     int *robot_joint_id;
     std::pair<int, int> *obstacle_frame_and_id1;
     std::pair<int, int> *obstacle_frame_and_id2;
-    if (!((o1->getNodeType() == coal::NODE_TYPE::GEOM_BOX && o2->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE) ||(o1->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE && o2->getNodeType() == coal::NODE_TYPE::GEOM_BOX) ||(o1->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE && o2->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE) ||(o1->getNodeType() == coal::NODE_TYPE::GEOM_SPHERE && o2->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE) || (o2->getNodeType() == coal::NODE_TYPE::GEOM_SPHERE && o1->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE)))
-    {
-        // std::cout<<"AABB"<<std::endl;
-        assert(false);
-        coal::collide(o1, o2, col_req, col_res);
-        return col_res.isCollision();
-    }
+    // if (!((o1->getNodeType() == coal::NODE_TYPE::GEOM_BOX && o2->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE) ||(o1->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE && o2->getNodeType() == coal::NODE_TYPE::GEOM_BOX) ||(o1->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE && o2->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE) ||(o1->getNodeType() == coal::NODE_TYPE::GEOM_SPHERE && o2->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE) || (o2->getNodeType() == coal::NODE_TYPE::GEOM_SPHERE && o1->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE)))
+    // {
+    //     // std::cout<<"AABB"<<std::endl;
+    //     assert(false);
+    //     coal::collide(o1, o2, col_req, col_res);
+    //     return col_res.isCollision();
+    // }
     obstacle_frame_and_id1 = (std::pair<int, int> *)o1->getUserData();
     obstacle_frame_and_id2 = (std::pair<int, int> *)o2->getUserData();
     if (obstacle_frame_and_id1->first == -1)
@@ -556,14 +556,14 @@ bool MDP::SafeIntervalCollisionCallback::collide(coal::CollisionObject *o1, coal
     std::pair<int, int> *obstacle_frame_and_id1;
     std::pair<int, int> *obstacle_frame_and_id2;
     int frame = 0;
-    if (!((o1->getNodeType() == coal::NODE_TYPE::GEOM_BOX && o2->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE) ||(o1->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE && o2->getNodeType() == coal::NODE_TYPE::GEOM_BOX) ||(o1->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE && o2->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE) ||(o1->getNodeType() == coal::NODE_TYPE::GEOM_SPHERE && o2->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE) || (o2->getNodeType() == coal::NODE_TYPE::GEOM_SPHERE && o1->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE)))
-    {
-        std::cout << o1->getNodeType() << std::endl;
-        std::cout << o2->getNodeType() << std::endl;
-        assert(false);
-        coal::collide(o1, o2, col_req, col_res);
-        return col_res.isCollision();
-    }
+    // if (!((o1->getNodeType() == coal::NODE_TYPE::GEOM_BOX && o2->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE) ||(o1->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE && o2->getNodeType() == coal::NODE_TYPE::GEOM_BOX) ||(o1->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE && o2->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE) ||(o1->getNodeType() == coal::NODE_TYPE::GEOM_SPHERE && o2->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE) || (o2->getNodeType() == coal::NODE_TYPE::GEOM_SPHERE && o1->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE)))
+    // {
+    //     std::cout << o1->getNodeType() << std::endl;
+    //     std::cout << o2->getNodeType() << std::endl;
+    //     assert(false);
+    //     coal::collide(o1, o2, col_req, col_res);
+    //     return col_res.isCollision();
+    // }
     obstacle_frame_and_id1 = (std::pair<int, int> *)o1->getUserData();
     obstacle_frame_and_id2 = (std::pair<int, int> *)o2->getUserData();
 
@@ -592,11 +592,11 @@ bool MDP::SafeIntervalCollisionCallback::collide(coal::CollisionObject *o1, coal
     // if is_collision, then add frame to vector
     if (is_collided)
     {
-        std::cout<<"collision!"<<std::endl;
-        std::cout<<"obstacle_frame_and_id1->first "<<obstacle_frame_and_id1->first<<std::endl;
-        std::cout<<"obstacle_frame_and_id1->second "<<obstacle_frame_and_id1->second<<std::endl;
-        std::cout<<"obstacle_frame_and_id2->first "<<obstacle_frame_and_id2->first<<std::endl;
-        std::cout<<"obstacle_frame_and_id2->second "<<obstacle_frame_and_id2->second<<std::endl;
+        // std::cout<<"collision!"<<std::endl;
+        // std::cout<<"obstacle_frame_and_id1->first "<<obstacle_frame_and_id1->first<<std::endl;
+        // std::cout<<"obstacle_frame_and_id1->second "<<obstacle_frame_and_id1->second<<std::endl;
+        // std::cout<<"obstacle_frame_and_id2->first "<<obstacle_frame_and_id2->first<<std::endl;
+        // std::cout<<"obstacle_frame_and_id2->second "<<obstacle_frame_and_id2->second<<std::endl;
 
         this->frames_in_collision.push_back(frame);
     }

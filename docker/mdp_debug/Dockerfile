@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 # Install necessary dependencies
@@ -32,8 +32,8 @@ RUN apt install -y software-properties-common && \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | tee /etc/apt/sources.list.d/ros2.list > /dev/null && \
     apt update && \
     apt upgrade -y && \
-    apt install -y ros-humble-desktop && \
-    echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc 
+    apt install -y ros-jazzy-desktop && \
+    echo "source /opt/ros/jazzy/setup.bash" >> ~/.bashrc 
 
 
 
@@ -43,12 +43,12 @@ RUN apt-get update && apt-get install  -y \
     libnanoflann-dev \
     libpcl-dev \
     libeigen3-dev \
-    libkdl-parser-dev \
+    # libkdl-parser-dev \
     libgflags-dev \
     libgoogle-glog-dev \
     liborocos-kdl-dev \
     libyaml-cpp-dev \
-    liburdf-dev \
+    # liburdf-dev \
     libfcl-dev && \
     rm -rf /var/lib/apt/lists/* 
 
@@ -69,7 +69,7 @@ RUN apt-get update && apt-get install  -y \
     pip3 install --upgrade pip && \
     pip3 install -U wheel eigenpy numpy castxml pybullet matplotlib scipy pygccxml pyplusplus 
 
-# Install hpp-fcl
+# Install coal
 RUN mkdir ./libs && cd ./libs && \
     git clone --recursive https://github.com/coal-library/coal  && \
     cd coal  && \
@@ -117,7 +117,7 @@ RUN mkdir ./libs && cd ./libs && \
 ENV NVIDIA_VISIBLE_DEVICES=all \
     NVIDIA_DRIVER_CAPABILITIES=graphics,utility,compute
 
-RUN ln -s /usr/local/lib/libcoal.so /usr/local/lib/libhpp-fcl.so
+RUN ln -s /usr/local/lib/libcoal.so /usr/local/lib/libcoal.so
 
 RUN apt install -y blender
 
