@@ -1,15 +1,7 @@
-
-
 # ManipulationPlanning-SI-RRT
-Combination of Rapidly-Exporing Random Trees (RRT) and Safe Interval Path Planning (SIPP)  for high-DOF planning in dynamic environments, i.e. planning a path for a manipulator when moving obstacles are present (and their trajectories are know/accurately predicted) 
 
-<!--Блок информации о репозитории в бейджах-->
-<!-- ![Static Badge](https://img.shields.io/badge/OkulusDev-Oxygen-Oxygen)
-![GitHub top language](https://img.shields.io/github/languages/top/OkulusDev/Oxygen)
-![GitHub](https://img.shields.io/github/license/OkulusDev/Oxygen)
-![GitHub Repo stars](https://img.shields.io/github/stars/OkulusDev/Oxygen)
-![GitHub issues](https://img.shields.io/github/issues/OkulusDev/Oxygen)
- -->
+Combination of Rapidly-Exploring Random Trees (RRT) and Safe Interval Path Planning (SIPP) for high-DOF planning in dynamic environments, i.e., planning a path for a manipulator when moving obstacles are present (and their trajectories are known/accurately predicted).
+
 
 
 
@@ -19,6 +11,7 @@ Combination of Rapidly-Exporing Random Trees (RRT) and Safe Interval Path Planni
 
 ![experiments](<supplementary material/0001-1376.gif>)
 
+[![Watch the demo video](https://img.youtube.com/vi/inTmRr0GXL8/0.jpg)](https://youtu.be/inTmRr0GXL8?si=BcaILcrB6HbhIhyT)
 
 
 > [!Important]  
@@ -28,103 +21,137 @@ Combination of Rapidly-Exporing Random Trees (RRT) and Safe Interval Path Planni
 >
 > **[[Full text on arXiv](https://arxiv.org/abs/2412.19567)]**
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Supported Algorithms](#supported-algorithms)
+- [Repository Structure](#repository-structure)
+- [Code Structure](#code-structure)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Visualization Examples](#visualization-examples)
+- [Analyze Data](#analyze-data)
+- [Citing This Work](#citing-this-work)
+- [Contact](#contact)
+
 ## Overview
 
-This repository contains the source code for path planning in dynamic enviroments for manipulators and Blender plugins and code for creating and visualisation test cases. 
+This repository contains the source code for path planning in dynamic environments for manipulators, Blender plugins, and code for creating and visualization of test cases.
 
-### Supported Algorithms
+## Supported Algorithms
 
-The following path planning algorithms are used:
+The following path planning algorithms are implemented:
 
-* `DRGBT`: reactive planner for manipulators. We forked authorss implementation from RPMPLv2 library and modified it to use our collisiion detection functions.
-* `ST-RRT*`: deliberative planner for planning in space-time. We forked authors'implementation from OMPL library.
-* `SI-RRT`: deliberative planner that uses safe intervals for planning in dynamic enviroment.
+### DRGBT (Dynamic Rapidly-exploring Gaussian Bottleneck Tree)
 
-This repository can also be used as a base framework for implementing custom AMAPF algorithms.
+**Description**: A reactive planner for manipulators that dynamically replans the path based on distance to obstacles.
+
+**Implementation**: Forked from RPMPLv2 library and modified to use our collision detection functions.
+
+### ST-RRT* (Space-Time RRT*)
+
+**Description**: A deliberative anytime planner that works directly in the space-time domain to find collision-free paths.
+
+**Implementation**: Forked from OMPL library and adapted for our framework.
+
+### SI-RRT (Safe Interval RRT)
+
+**Description**: Our novel deliberative planner that uses safe intervals for planning in dynamic environments.
+
+
+**Implementation**: Original implementation developed for this research.
 
 ## Repository Structure
 
 The repository is organized into several branches:
 
-* **`main` branch** [[**Link**](https://github.com/PathPlanning/ManipulationPlanning-SI-RRT/tree/main)]: Contains up-to-date realisation of the algorithm.
-* **`reproducibility-version` branch** [[**Link**](https://github.com/PathPlanning/ManipulationPlanning-SI-RRT/tree/reproducibility-version)]: Contains version of the algorithm, that was used in paper's experiments.
+* **`main` branch** [[**Link**](https://github.com/PathPlanning/ManipulationPlanning-SI-RRT/tree/main)]: Contains up-to-date implementation of the algorithm, including multiagent tasks.
+* **`reproducibility-version` branch** [[**Link**](https://github.com/PathPlanning/ManipulationPlanning-SI-RRT/tree/reproducibility-version)]: Contains version of the algorithm that was used in the paper's experiments.
 
-## Quick start
+## Code Structure
 
-Download dataset https://disk.yandex.ru/d/-73LOGO5kOSYuA and extract ./tests directory in ./mass_test/tests 
+The codebase is organized into the following main directories:
 
-Set number of parallel jobs in ./mass_test/do_mass_test.py NUM_CPUS. best practice - set NUM_CPUS as number of cores in CPU - 1
+- **`MSIRRT/`**: Our implementation of the Safe Interval RRT algorithm
 
-Download docker container, remove tests results from the dataset, enter the container
+- **`STRRT_Planner/`**: Space-Time RRT* implementation
 
-```
-make pull_docker
-make clean_experiments_result
-make enter_debug_docker
-```
+- **`RPMPLv2/`**: DRGBT implementation, submoduled from https://github.com/PathPlanning/RPMPLv2/tree/new-compiler
 
-```
-cd ./app
-```
+- **`Blender/`**: Scripts and plugins for Blender visualization:
+  - `urdf_importer/`: Blender add-on for importing URDF files. Compress it to .zip and install in Blender. Originally from https://github.com/Victorlouisdg/blender-urdf-importer , heavily modified
+  - `scenes/`: Example Blender scene files for simulation and visualization
+  - `robots/`: URDF and mesh files for supported robot models
+  - `scripts/`: Utility scripts for exporting, importing, batch processing Blender scenes and creating mass tests
 
-build planners and start mass test execution
+  For detailed information, prease refer to  [Blender Guide](./docs/Blender_guide.md).
 
-```
-make build_planner_debug
-make mass_tests
-```
+- **`mass_test/`**: Scripts for running batch experiments
+  - `do_mass_test.py`: Main script for executing tests in parallel
+  - `clean_experiments.py`: Utility for cleaning test results
+  - `final_analysis.ipynb`: Jupyter notebook for analyzing test results
 
-## Analyse data
+- **`docker/`**: Docker configuration files for reproducible environments
 
-Use ./mass_test/final_analysis.ipynb to analyse planner execution data
+- **`tests/`**: Test cases and benchmark scenarios
 
-Data, that has been used in the paper is available at https://disk.yandex.ru/d/-73LOGO5kOSYuA
+## Installation
 
-<!-- ## Installation and Launch
+For detailed installation instructions and dependencies please refer to our [Installation Guide](./docs/installation_dependencies.md).
 
-### Main Requirements
+## Quick Start
 
-To use the repository, install the following software and libraries:
+Follow these steps to quickly get started with the framework:
 
-* `coal`
-* `Blender`
- 
-It is recomended to build *coal* from sources, using *-march=native -03* compiler flags  -->
+1. **Download the test dataset**:
+   ```bash
+   # Download the dataset
+   wget https://disk.yandex.ru/d/-73LOGO5kOSYuA -O dataset.zip
+   
+   # Extract the test directory into the correct location
+   unzip dataset.zip -d ./mass_test/tests
+   ```
 
-<!-- 
-### Installation
+2. **Configure parallel execution**:
+   - Open `./mass_test/do_mass_test.py` and set the `NUM_CPUS` variable
+   - Recommended: Set `NUM_CPUS` to the number of CPU cores minus 1
 
-After all requirements was installed, you should clone this repo in separate folder and run installation process (tested on Linux and macOS):
+3. **Set up the Docker environment**:
+   ```bash
+   # Pull the pre-built Docker image
+   make pull_docker
+   
+   # Clean any existing test results
+   make clean_experiments_result
+   
+   # Enter the Docker container
+   make enter_debug_docker
+   ```
 
-To set up this repository, follow these steps (tested on Linux and macOS):
+4. **Build the planners and run tests**:
+   ```bash
+   # Navigate to the app directory inside the Docker container
+   cd ./app
+   
+   # Build the planners in debug mode
+   make build_planner_debug
+   
+   # Run the batch tests
+   make mass_tests
+   ```
 
-1. Clone the repository:
+5. **Verify successful execution**:
+   - Check for the presence of result files in the `mass_test/tests` directory
+   - Ensure no error messages were printed during execution
 
-```bash
-git clone git@github.com:PathPlanning/TP-SWAP.git tp-swap
-```
 
-2. Install the package:
 
-```bash
-cd tp-swap
-pip install -e .
-``` -->
-<!-- 
-### Launching Algorithms
+## Analyze Data
 
-To run and evaluate the algorithms, clone this reporitory into separate folder second time and switch to the `experiments` branch, which includes all necessary scripts and tools for conducting experiments.
+To analyze the results of your experiments open the Jupyter notebook `./mass_test/final_analysis.ipynb`
 
-```bash
-cd ..
-git clone git@github.com:PathPlanning/TP-SWAP.git tp-swap-exp
-cd tp-swap-exp
-git checkout experiments
-```
+The dataset used in the original paper is available at: https://disk.yandex.ru/d/-73LOGO5kOSYuA
 
-Detailed instructions for running experiments, generating tasks, and processing results can be found in the README of the `experiments` branch.
-
- -->
 ## Citing This Work
 
 If you use this repository in your research, please cite the following paper:

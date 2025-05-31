@@ -114,8 +114,8 @@ void MDP::RobotObstacleFCL::load_joint_collision_models(const std::string &urdf_
 
             coal::BVHModelPtr_t bvh = loader.load(urdf_root_path + mesh_ptr->filename);
             bvh->buildConvexHull(true, "Qt");
-            std::shared_ptr<coal::ConvexBase> link_mesh = bvh->convex;
-            // std::shared_ptr<coal::ConvexBase> link_mesh = loadConvexMesh(urdf_root_path + mesh_ptr->filename);
+            std::shared_ptr<coal::ConvexBase32> link_mesh = bvh->convex;
+            // std::shared_ptr<coal::ConvexBase32> link_mesh = loadConvexMesh(urdf_root_path + mesh_ptr->filename);
             link2mesh[current_link->name] = link_mesh;
             collision_objects.push_back(link_mesh);
         }

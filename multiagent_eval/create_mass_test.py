@@ -1,7 +1,7 @@
 """
-create massive tests for testing multiagent execution
+Create massive tests for testing multiagent execution
 
- python3 ./multiagent_eval/create_mass_test.py
+python3 ./multiagent_eval/create_mass_test.py
 
 """
 
@@ -76,7 +76,7 @@ def is_collision(scene, get_angles_func):
     data["end_configuration"] = get_angles_func(data["robots"][0])
     for robot in data["robots"][1:]:
         robot["type"] = "dynamic_robot"
-        robot["positions"] = [get_angles_func(robot)]
+        robot["trajectory"] = [get_angles_func(robot)]
         robot["urdf_file_path"] = robot["robot_urdf"]
         data["obstacles"].append(robot)
 
