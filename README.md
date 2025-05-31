@@ -42,7 +42,7 @@ This repository contains the source code for path planning in dynamic environmen
 
 The following path planning algorithms are implemented:
 
-### DRGBT (Dynamic Rapidly-exploring Gaussian Bottleneck Tree)
+### DRGBT (Dynamic Rapidly-exploring Generalized Bur Tree)
 
 **Description**: A reactive planner for manipulators that dynamically replans the path based on distance to obstacles.
 
