@@ -285,7 +285,8 @@ std::vector<MDP::RobotObstacleFCL::JointCollisionObject> MDP::RobotObstacleFCL::
 
 std::vector<MDP::RobotObstacleFCL::JointCollisionObject> MDP::RobotObstacleFCL::get_collision_object_for_robot_angles_private(const std::vector<double> angles)
 {
-    // std::vector<float> angles_f;
+
+    std::vector<float> angles_f;
     // for (int i = 0; i < angles.size(); i++)
     // {
     //     angles_f.push_back((float)angles[i]);
@@ -345,6 +346,9 @@ std::vector<MDP::RobotObstacleFCL::JointCollisionObject> MDP::RobotObstacleFCL::
         transforms.at(link_id).setRotation(rotation*this->fk_chain[i].link_origin_rotation);
         // std::cout<<"combined_rotation" <<std::endl;
         // std::cout<<transforms.at(link_id).getRotation()<<std::endl;
+        // std::cout<<"joint number "<<result.size()<<std::endl;
+        // std::cout<<"joint pos"<<transforms.at(link_id).getTranslation()<<std::endl;
+        // std::cout<<"joint rot"<<transforms.at(link_id).getQuatRotation()<<std::endl;
 
         result.push_back(JointCollisionObject(link_name, this->fk_chain[i].link_mesh, transforms.at(link_id), link_id));
         link_id++;
@@ -362,7 +366,7 @@ std::vector<MDP::RobotObstacleFCL::JointCollisionObject> MDP::RobotObstacleFCL::
         }
     }
 
-    result.erase(result.begin(), result.begin() + 2); // Delete base links models
+    // result.erase(result.begin(), result.begin() + 2); // Delete base links models
 
     // assert(result1.size() == result.size());
 
@@ -374,9 +378,9 @@ std::vector<MDP::RobotObstacleFCL::JointCollisionObject> MDP::RobotObstacleFCL::
     // for (int joint_ind = 0; joint_ind < result.size(); joint_ind++)
     // {
     //     std::cout<<result[joint_ind].transform.getTranslation()<<std::endl;
-    //     std::cout<<result[joint_ind].transform.getQuatRotation()<<std::endl;
-        
+    //     std::cout<<result[joint_ind].transform.getQuatRotation()<<std::endl;   
     // }
+
     return result;
 }
 

@@ -158,7 +158,8 @@ int main(int argc, char **argv)
     vector_space->setBounds(vector_space_bounds);
     auto time_space = std::make_shared<ob::TimeStateSpace>();
     auto space = std::make_shared<ob::SpaceTimeStateSpace>(vector_space, SceneTask.get_scene_task().robot_joint_max_velocity[0],0.5); // TODO: max velocity for each joint
-    space->setTimeBounds(0.0, STRRTConfigReader.get_strrt_config().max_allowed_time_to_move);
+    
+    space->setTimeBounds(0.0,  (double)((double)SceneTask.get_scene_task().frame_count/(double)SceneTask.get_scene_task().fps));
     ob::SpaceInformationPtr si(new ob::SpaceInformation(space));
 
     std::shared_ptr<MDP::StateValidityCheckerFunctor> state_cheker = std::make_shared<MDP::StateValidityCheckerFunctor>(si, SceneTask.get_scene_task());

@@ -22,6 +22,8 @@ MDP::MSIRRT::PlannerConnect::PlannerConnect(MDP::ConfigReader::SceneTask scene_t
 
     assert(is_coords_in_limits(MDP::MSIRRT::Vertex::VertexCoordType(scene_task.end_configuration.data()))); // check end conf bounds;
 
+    // std::cout<<"--------------------------------------------"<<std::endl;
+    // std::cout<<"Get staret tree safe intervals!!!!"<<std::endl;
     std::vector<std::pair<int, int>> start_safe_intervals = this->collision_manager.get_safe_intervals(scene_task.start_configuration); // get start cond save intervals;
 
     // сheck if first start at 0
@@ -29,10 +31,13 @@ MDP::MSIRRT::PlannerConnect::PlannerConnect(MDP::ConfigReader::SceneTask scene_t
     assert(start_safe_intervals[0].first == 0);
 
     this->start_tree->add_vertex(scene_task.start_configuration, start_safe_intervals[0], nullptr, -1, 0);
-    for (int another_safe_interval_id = 1; another_safe_interval_id < start_safe_intervals.size(); another_safe_interval_id++)
-    {
-        this->orphan_tree->add_vertex(scene_task.start_configuration, start_safe_intervals[another_safe_interval_id], nullptr, -1, -1);
-    }
+    
+    // std::cout<<"start safe intervals:"<<std::endl;
+    // for (int another_safe_interval_id = 1; another_safe_interval_id < start_safe_intervals.size(); another_safe_interval_id++)
+    // {
+    //     // std::cout<< start_safe_intervals[another_safe_interval_id].first<<" "<<start_safe_intervals[another_safe_interval_id].second<<std::endl;
+    //     this->orphan_tree->add_vertex(scene_task.start_configuration, start_safe_intervals[another_safe_interval_id], nullptr, -1, -1);
+    // }
 
     this->root_node = this->start_tree->array_of_vertices[0];
     this->root_node->arrival_time = 0;
@@ -45,9 +50,16 @@ MDP::MSIRRT::PlannerConnect::PlannerConnect(MDP::ConfigReader::SceneTask scene_t
         std::cout<<"this->goal_safe_intervals.size()==0" <<std::endl;
         std::exit(1);
     }
-    this->goal_tree->add_vertex(this->goal_coords, this->goal_safe_intervals.back(), nullptr, -1, this->goal_safe_intervals.back().second);
+    // std::cout<<"goal safe intervals:"<<std::endl;
+    for (const std::pair<int,int>& safe_int:this->goal_safe_intervals){
+    //     std::cout<< safe_int.first<<" "<<safe_int.second<<std::endl;
+        this->goal_tree->add_vertex(this->goal_coords, safe_int, nullptr, -1, safe_int.second);
+
+    }
+    //// this->goal_tree->add_vertex(this->goal_coords, this->goal_safe_intervals.back(), nullptr, -1, this->goal_safe_intervals.back().second);
+    
     // сheck if the latest safe interval at goal is safe
-    assert(this->goal_safe_intervals.back().second == scene_task.frame_count - 1);
+    // assert(this->goal_safe_intervals.back().second == scene_task.frame_count - 1);
     this->current_tree = this->goal_tree;
     this->other_tree = this->start_tree;
     this->goal_reached = false;
@@ -296,7 +308,7 @@ std::vector<std::pair<MDP::MSIRRT::Vertex *, int>> MDP::MSIRRT::PlannerConnect::
     std::vector<std::pair<MDP::MSIRRT::Vertex *, int>> result;
 
     // Unsorted radius search
-    std::vector<std::pair<size_t, double>> indices_dists;
+    std::vector<nanoflann::ResultItem<size_t, double>> indices_dists;
     // search_params.sorted = false;
     nanoflann::RadiusResultSet<double, size_t> resultSet(radius, indices_dists);
 

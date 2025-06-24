@@ -32,7 +32,7 @@ bool MDP::StateValidityCheckerFunctor::isValid(const ob::State *state) const
     validation_counter++;
     // get time
     float t = si_->getStateSpace()->as<ob::SpaceTimeStateSpace>()->getStateTime(state);
-
+    assert(t<this->scene_task.frame_count/this->scene_task.fps);
     // get robot position
     auto state_pos_ptr = state->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values;
     std::vector<double> pos;

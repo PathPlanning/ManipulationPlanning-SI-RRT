@@ -143,7 +143,9 @@ MDP::CollisionManager::CollisionManager(const MDP::ConfigReader::SceneTask _scen
     {
         int curr_joint_count = 0;
         for (int frame = 0; frame < this->frame_count; frame++)
-        {
+        {       
+            // std::cout<<"------------------------------------"<<frame<<std::endl;
+            // std::cout<<"frame: "<<frame<<std::endl;
 
             std::vector<MDP::RobotObstacleFCL::JointCollisionObject> result_obstacle_joints = this->robot_obstacles[obstacle_robot_id].get_collision_object_for_frame(frame);
             curr_joint_count = result_obstacle_joints.size();
@@ -283,6 +285,8 @@ bool MDP::CollisionManager::check_collision_private(const std::vector<double> &r
         collision_callback.is_collided = false;
         coal::CollisionObject joint_coll_obj(main_robot_collision_models[robot_joint_id+this->robot_joint_offset].collision_object, main_robot_collision_models[robot_joint_id+this->robot_joint_offset].transform);
         joint_coll_obj.setUserData(new std::pair<int, int>(-1, robot_joint_id));
+        // std::cout<<"_________________"<<std::endl;
+        // std::cout<<frame<<std::endl;
         // std::cout<<&this->collision_pairs<<std::endl;
         // std::cout <<(robot_joint_id)<<std::endl;
         // std::cout<<joint_coll_obj.getTransform().getTranslation()<<" "<<((coal::Capsule*)(joint_coll_obj.collisionGeometry().get()))->radius<<" "<<((coal::Capsule*)(joint_coll_obj.collisionGeometry().get()))->halfLength<<std::endl;
@@ -586,7 +590,7 @@ bool MDP::SafeIntervalCollisionCallback::collide(coal::CollisionObject *o1, coal
     // std::cout<<"sphere"<<std::endl;
     // std::cout<<"robot_joint_id "<<*robot_joint_id<<std::endl;
     // std::cout<<"obstacle_frame_and_id "<<obstacle_frame_and_id->first <<" "<<obstacle_frame_and_id->second<<std::endl;
-    // coal::collide(o1, o2, col_req, col_res);
+    coal::collide(o1, o2, col_req, col_res);
     bool is_collided = col_res.isCollision();
 
     // if is_collision, then add frame to vector

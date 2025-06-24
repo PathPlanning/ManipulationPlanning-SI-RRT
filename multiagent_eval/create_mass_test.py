@@ -17,7 +17,7 @@ def get_robot(name, coords, rotation):
         "name": name,
         "start_configuration": None,
         "end_configuration": None,
-        "robot_urdf": "./Blender/robots/xarm6/xarm6vis.urdf",
+        "robot_urdf": "./Blender/robots/xarm6/xarm6cyl.urdf",
         "robot_joint_max_velocity": [3.1415, 3.1415, 3.1415, 3.1415, 3.1415, 3.1415],
         "robot_capsules_radius": [0.047, 0.12, 0.11, 0.09, 0.05, 0.038],
         "robot_joints_order": [
@@ -45,13 +45,16 @@ def create_scene(kolvo_robotov: int) -> dict:
 
     default_scene = {
         "robots": [],
-        "frame_count": 3000,
+        "frame_count": 500,
         "fps": 30,
         "blender_file_path": "./Blender/scenes/flying boxes.blend",
         "obstacles": [],
     }
-    workplace_radius = 0.35
-
+    workplace_radius = 0.55
+    if kolvo_robotov == 8:
+        workplace_radius = 0.6
+    elif kolvo_robotov == 2:
+        workplace_radius = 0.4
     for robot_number in range(kolvo_robotov):
         coords = [
             workplace_radius * np.cos(robot_number * 2 * np.pi / kolvo_robotov),
@@ -82,6 +85,36 @@ def is_collision(scene, get_angles_func):
 
     del data["robots"]
     data['frame_count']=1
+    filename = "check_collisions_start.json"
+
+    with open(filename, "w") as f:
+        json.dump(data, f)
+
+    result = subprocess.run(
+        f"./STRRT_Planner/build/check_scene ./check_collisions_start.json", shell=True
+    )
+    if result.returncode != 0:
+        return True
+    return False
+
+def test_goal(scene, testing_robot, goal_angles):
+    data = copy.deepcopy(scene)
+    for key, value in testing_robot.items():
+        data[key] = value
+
+    data["start_configuration"] = goal_angles
+    data["end_configuration"] = goal_angles
+    
+    for another_robot in data["robots"]:
+        if another_robot["name"] == testing_robot["name"]:
+            continue
+        another_robot["type"] = "dynamic_robot"
+        another_robot["trajectory"] = [another_robot["start_configuration"]]
+        another_robot["urdf_file_path"] = another_robot["robot_urdf"]
+        data["obstacles"].append(another_robot)
+
+    del data["robots"]
+    data['frame_count']=1
     filename = "check_collisions.json"
 
     with open(filename, "w") as f:
@@ -92,8 +125,42 @@ def is_collision(scene, get_angles_func):
     )
     if result.returncode != 0:
         return True
-    return False
+    
 
+    data = copy.deepcopy(scene)
+    for key, value in testing_robot.items():
+        data[key] = value
+
+    # data["start_configuration"] = goal_angles
+    data["end_configuration"] = goal_angles
+    
+    for another_robot in data["robots"]:
+        if another_robot["name"] == testing_robot["name"]:
+            continue
+        another_robot["type"] = "dynamic_robot"
+        another_robot["trajectory"] = [another_robot["start_configuration"]]*3000
+        another_robot["urdf_file_path"] = another_robot["robot_urdf"]
+        data["obstacles"].append(another_robot)
+
+    del data["robots"]
+    data['frame_count']=500
+    filename = "check_collisions.json"
+
+    with open(filename, "w") as f:
+        json.dump(data, f)
+
+    result = subprocess.run(
+        f"./MSIRRT/build/MSIRRT_Planner {filename} ./multiagent_tests ./STRRT/strrt_config.json 1", shell=True
+    )
+    
+    result_filename = "./multiagent_tests/"+[x for x in os.listdir("./multiagent_tests") if 'MSIRRT' in x][0]
+    print(result_filename)
+    with open(result_filename, "r") as f:
+        plann_result  = json.load(f)
+    os.remove(result_filename)
+    if plann_result["final_planner_data"]["has_result"]:
+        return False
+    return True
 
 def get_random_angles(robot_urdf_path):
     # TODO: rewrite, read urdf and generate based on limits from uredf
@@ -115,11 +182,16 @@ def set_start_coordinates(scene: dict) -> dict:
         scene = copy.deepcopy(unchanged_scene)
         for robot in scene["robots"]:  # for every robot
             # sample random configuration
-            robot["start_configuration"] = get_random_angles(robot["robot_urdf"])
-
+            # robot["start_configuration"] = get_random_angles(robot["robot_urdf"])
+            robot["start_configuration"]=[0]*6
         # check if collision
         # if collision, repeat
-        nado = is_collision(scene, lambda s: s["start_configuration"])
+        for i in range(len(scene['robots'])):
+            nado = is_collision(scene, lambda s: s["start_configuration"])
+            scene['robots'].append(scene['robots'].pop(0))
+            if nado:
+                break
+            
     return scene
 
 
@@ -127,22 +199,25 @@ def set_goal_coordinates(scene: dict, number_of_goals: int) -> dict:
     for robot in scene["robots"]:
         robot["end_configuration"] = []
     unchanged_scene = copy.deepcopy(scene)
-    for goal_number in range(number_of_goals):
-        unchanged_scene = copy.deepcopy(scene)
-        nado = True
-        
-        while nado:
-            print("create_goal_coordinates")
-            scene = copy.deepcopy(unchanged_scene)
-            for robot in scene["robots"]:  # for every robot
+    for robot in scene["robots"]:  # for every robot
+        for goal_number in range(number_of_goals):
+            unchanged_scene = copy.deepcopy(scene)
+            dont_have_a_goal = True
+            while dont_have_a_goal:
+                print("create_goal_coordinates")
+                goal_angles = get_random_angles(robot["robot_urdf"])
+                dont_have_a_goal = test_goal(scene,robot, goal_angles)
+                if dont_have_a_goal:
+                    print(f"no goal{goal_number} found for {robot['name']}")
                 
-                # sample random configuration
-                robot["end_configuration"].append(
-                    get_random_angles(robot["robot_urdf"])
-                )
-            # check if collision
-            # if collision, repeat
-            nado = is_collision(scene, lambda s: s["end_configuration"][goal_number])
+            robot["end_configuration"].append(
+                goal_angles                    
+            )
+        
+        #return to start after all goals
+        robot["end_configuration"].append(
+                robot["start_configuration"]                    
+            )
         
     return scene
 
@@ -156,13 +231,14 @@ def main() -> None:
     """Plan path for given multiagent blender scene with stRRT and drgbt"""
 
     robot_number = [2, 4, 6, 8]
-    number_of_test_cases = 100
+    number_of_test_cases = 300
     number_of_goals = 10
     os.makedirs("multiagent_tests", exist_ok=False)
     for kolvo_robotov in robot_number:
         os.makedirs(f"multiagent_tests/{kolvo_robotov}_robots", exist_ok=False)
-        scene = create_scene(kolvo_robotov)
         for test_case_number in range(number_of_test_cases):
+            scene = create_scene(kolvo_robotov)
+
             path = (
                 f"multiagent_tests/{kolvo_robotov}_robots/test_number{test_case_number}"
             )

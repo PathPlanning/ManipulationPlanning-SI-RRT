@@ -122,7 +122,7 @@ def load_mesh(mesh):
     objects = None
     print("file_extension:",file_extension)
     if file_extension == "stl":
-        bpy.ops.import_mesh.stl(filepath=mesh_path)
+        bpy.ops.wm.stl_import(filepath=mesh_path)
         objects = [bpy.context.object]
     elif file_extension == "dae":
         bpy.ops.wm.collada_import(filepath=mesh_path)
@@ -143,14 +143,14 @@ def load_geometry(visual):
     if mesh is not None:
         return load_mesh(mesh)
 
-    cylinder = geometry.find('cylinder')
-    if cylinder is not None:
-        length = float(cylinder.attrib['length'])
-        radius = float(cylinder.attrib['radius'])
-        bpy.ops.mesh.primitive_cylinder_add(vertices=64, radius=radius, depth=length)
-        return [bpy.context.active_object]
+    # cylinder = geometry.find('cylinder')
+    # if cylinder is not None:
+    #     length = float(cylinder.attrib['length'])
+    #     radius = float(cylinder.attrib['radius'])
+    #     bpy.ops.mesh.primitive_cylinder_add(vertices=64, radius=radius, depth=length)
+    #     return [bpy.context.active_object]
 
-    capsule = geometry.find('capsule')
+    capsule = geometry.find('cylinder')
     if capsule is not None:
         length = float(capsule.attrib['length'])
         radius = float(capsule.attrib['radius'])
