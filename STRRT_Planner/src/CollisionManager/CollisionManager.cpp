@@ -18,6 +18,8 @@ MDP::CollisionManager::CollisionManager(const MDP::ConfigReader::SceneTask _scen
                                                                                           scene_task(_scene_task)
 { // init robot (in initializer list)
 
+    MDP::ResultsWriter::get_instance().restart_collision_checker();                                         
+
     // init obstacles
     for (auto obstacle : scene_task.obstacles)
     { // TODO: divide obstacles into static and dynamic one.
@@ -101,7 +103,7 @@ MDP::CollisionManager::CollisionManager(const MDP::ConfigReader::SceneTask _scen
     }
 
     // construct safeinterval broadphase colliison manager
-
+    MDP::ResultsWriter::get_instance().safe_intervals_init_time.reset();
     coal::DynamicAABBTreeArrayCollisionManager *temp = new coal::DynamicAABBTreeArrayCollisionManager();
     temp->tree_init_level = 2;
     this->broadphase_manager = temp;
@@ -163,6 +165,9 @@ MDP::CollisionManager::CollisionManager(const MDP::ConfigReader::SceneTask _scen
 
     this->broadphase_manager->registerObjects(this->all_spheres);
     this->broadphase_manager->setup();
+    MDP::ResultsWriter::get_instance().safe_intervals_init_time.pause_timer();
+
+    MDP::ResultsWriter::get_instance().collision_check_init_time.reset();
 
     for (int frame = 0; frame < this->scene_task.frame_count; frame++)
     {
@@ -218,6 +223,8 @@ MDP::CollisionManager::CollisionManager(const MDP::ConfigReader::SceneTask _scen
         this->frame_broadphase_managers[frame]->registerObjects(this->by_frame_spheres[frame]);
         this->frame_broadphase_managers[frame]->setup();
     }
+    MDP::ResultsWriter::get_instance().collision_check_init_time.pause_timer();
+
 }
 
 MDP::CollisionManager::~CollisionManager()
@@ -257,6 +264,7 @@ bool MDP::CollisionManager::check_collision(const std::vector<double> &robot_ang
 
 {
     int frame = (int)(time * (this->scene_task.fps));
+    assert(frame<this->scene_task.frame_count);
     return MDP::ResultsWriter::get_instance().collision_check_wrapper(std::bind(&MDP::CollisionManager::check_collision_private, this, std::placeholders::_1, std::placeholders::_2), robot_angles, frame);
 }
 
@@ -272,7 +280,6 @@ bool MDP::CollisionManager::check_collision_frame_no_wrapper(std::vector<double>
 
 bool MDP::CollisionManager::check_collision_private(const std::vector<double> &robot_angles, int &frame)
 {
-
     std::vector<MDP::RobotObstacleFCL::JointCollisionObject> main_robot_collision_models = MDP::ResultsWriter::get_instance().forward_kinematics_collision_check_wrapper(std::bind(&MDP::RobotObstacleFCL::get_collision_object_for_robot_angles, &(this->planned_robot), std::placeholders::_1), robot_angles);
 
     std::vector<MDP::RobotObstacleFCL::JointCollisionObject> obstacle_joints;
@@ -282,6 +289,8 @@ bool MDP::CollisionManager::check_collision_private(const std::vector<double> &r
     MDP::CollisionCallback collision_callback(&(this->collision_pairs), this->collision_object_count + this->robot_obstacle_all_joint_count);
     for (int robot_joint_id = 0; robot_joint_id < this->collision_robot_links_count; robot_joint_id++)
     {
+        MDP::ResultsWriter::get_instance().collision_check_broadphase_counter += 1;
+
         collision_callback.is_collided = false;
         coal::CollisionObject joint_coll_obj(main_robot_collision_models[robot_joint_id+this->robot_joint_offset].collision_object, main_robot_collision_models[robot_joint_id+this->robot_joint_offset].transform);
         joint_coll_obj.setUserData(new std::pair<int, int>(-1, robot_joint_id));
@@ -295,6 +304,7 @@ bool MDP::CollisionManager::check_collision_private(const std::vector<double> &r
 
         if (collision_callback.is_collided)
         {
+            MDP::ResultsWriter::get_instance().collision_count+=1;
             return true;
         }
     }
@@ -403,6 +413,10 @@ bool MDP::CollisionManager::check_base_joints_collisiion(std::vector<double> rob
 
 std::vector<std::pair<int, int>> MDP::CollisionManager::get_safe_intervals(const std::vector<double> &robot_angles)
 {
+    return MDP::ResultsWriter::get_instance().safe_interval_wrapper(std::bind(&MDP::CollisionManager::get_safe_intervals_private, this, std::placeholders::_1), robot_angles);
+}
+std::vector<std::pair<int, int>> MDP::CollisionManager::get_safe_intervals_private(const std::vector<double> &robot_angles)
+{
     std::vector<std::pair<int, int>> results;
 
     int start_safe_frame = 0;
@@ -413,6 +427,7 @@ std::vector<std::pair<int, int>> MDP::CollisionManager::get_safe_intervals(const
     MDP::SafeIntervalCollisionCallback collision_callback(&this->collision_pairs, this->collision_object_count + this->robot_obstacle_all_joint_count);
     for (int robot_joint_id = 0; robot_joint_id < this->collision_robot_links_count; robot_joint_id++)
     {
+        MDP::ResultsWriter::get_instance().safe_interval_broadphase_counter+=1;
         coal::CollisionObject joint_coll_obj(main_robot_collision_models[robot_joint_id+this->robot_joint_offset].collision_object, main_robot_collision_models[robot_joint_id+this->robot_joint_offset].transform);
         std::pair<int, int> *joint_ind = new std::pair<int, int>(-1, robot_joint_id);
         joint_coll_obj.setUserData(joint_ind);
@@ -426,6 +441,9 @@ std::vector<std::pair<int, int>> MDP::CollisionManager::get_safe_intervals(const
 
     if (frames_in_collision.size() == 0)
     {
+        MDP::ResultsWriter::get_instance().sum_of_safe_interval_frames += scene_task.frame_count;
+        MDP::ResultsWriter::get_instance().number_of_safe_intervals += 1;
+
         results.emplace_back(0, scene_task.frame_count - 1);
         return results;
     }
@@ -438,6 +456,7 @@ std::vector<std::pair<int, int>> MDP::CollisionManager::get_safe_intervals(const
     {
         if ((collision_frame - last_collision_frame) != 1)
         {
+            MDP::ResultsWriter::get_instance().sum_of_safe_interval_frames+= collision_frame - 1 -( last_collision_frame + 1) + 1; 
             results.emplace_back(last_collision_frame + 1, collision_frame - 1);
         }
 
@@ -445,8 +464,12 @@ std::vector<std::pair<int, int>> MDP::CollisionManager::get_safe_intervals(const
     }
     if (frames_in_collision.back() != (this->scene_task.frame_count - 1))
     {
+        MDP::ResultsWriter::get_instance().sum_of_safe_interval_frames+= this->scene_task.frame_count - 1 -( frames_in_collision.back() + 1) + 1; 
+
         results.emplace_back(frames_in_collision.back() + 1, this->scene_task.frame_count - 1);
     }
+
+    MDP::ResultsWriter::get_instance().number_of_safe_intervals += results.size();
     return results;
 }
 
@@ -505,6 +528,7 @@ bool MDP::DistanceCallback::distance(coal::CollisionObject *o1, coal::CollisionO
 
 bool MDP::CollisionCallback::collide(coal::CollisionObject *o1, coal::CollisionObject *o2)
 {
+    MDP::ResultsWriter::get_instance().collision_check_narrowphase_counter+=1;
     if (this->is_collided)
     {
         return this->is_collided;
@@ -550,6 +574,7 @@ bool MDP::CollisionCallback::collide(coal::CollisionObject *o1, coal::CollisionO
 
 bool MDP::SafeIntervalCollisionCallback::collide(coal::CollisionObject *o1, coal::CollisionObject *o2)
 {
+    MDP::ResultsWriter::get_instance().safe_interval_narrowphase_counter += 1;
 
     // collide
     coal::CollisionRequest col_req;

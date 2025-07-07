@@ -110,6 +110,7 @@ namespace MDP
 
     private:
         bool check_collision_private(const std::vector<double>& robot_angles, int& frame);
+        std::vector<std::pair<int, int>>  get_safe_intervals_private(const std::vector<double>& robot_angles);
         std::vector<robot_link_distance_to_obj> get_distances_private(std::vector<double> robot_angles, float time, bool &is_collision);
 
 
@@ -132,5 +133,6 @@ namespace MDP
 
         std::vector<coal::BroadPhaseCollisionManager *>frame_broadphase_managers;
         std::vector<std::vector<coal::CollisionObject *>> by_frame_spheres;
+
     };
 }

@@ -73,10 +73,10 @@ echo "source /opt/ros/jazzy/setup.bash">> ~/.bashrc
 
 ```bash
 sudo apt-get update 
-sudo apt-get install  -y libgtest-dev libnanoflann-dev libpcl-dev libeigen3-dev libkdl-parser-dev libgflags-dev libgoogle-glog-dev  libyaml-cpp-dev  libfcl-dev
+sudo apt-get install  -y libgtest-dev libnanoflann-dev libpcl-dev libeigen3-dev libgflags-dev libgoogle-glog-dev  libyaml-cpp-dev  libfcl-dev
 
 # if necessary
-sudo apt-get install  -y liburdf-dev liborocos-kdl-dev
+sudo apt-get install  -y liburdf-dev liborocos-kdl-dev libkdl-parser-dev 
 ```
 
 4. **Install coal and ompl dependencies + python libraries** :
@@ -127,10 +127,10 @@ cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=Release \
 -DCOAL_HAS_QHULL=True \
 -DCOAL_BACKWARD_COMPATIBILITY_WITH_HPP_FCL=True \ 
--DCMAKE_C_FLAGS_RELEASE="-march=native -mtune=native -O3 -no-pie -fno-pie -flto -fomit-frame-pointer" \
--DCMAKE_CXX_FLAGS_RELEASE="-march=native -mtune=native -O3 -no-pie -fno-pie -flto -fomit-frame-pointer" .. 
-make -j4 
-make install 
+-DCMAKE_C_FLAGS_RELEASE="-march=native -mtune=native -O3 -fPIC -flto=auto -fomit-frame-pointer -fdata-sections -ffunction-sections -Wl,--gc-sections" \
+-DCMAKE_CXX_FLAGS_RELEASE="-march=native -mtune=native -O3 -fPIC -flto=auto -fomit-frame-pointer -fdata-sections -ffunction-sections -Wl,--gc-sections" 
+make -j120
+sudo make install -j120
 cd ../.. 
 ```
 
@@ -142,10 +142,10 @@ cd ompl
 mkdir -p build 
 cd build 
 cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=Release \
--DCMAKE_C_FLAGS_RELEASE="-march=native -mtune=native -O3 -no-pie -fno-pie -flto -fomit-frame-pointer" \
--DCMAKE_CXX_FLAGS_RELEASE="-march=native -mtune=native -O3 -no-pie -fno-pie -flto -fomit-frame-pointer"  
-make -j4  
-make install update_bindings 
+-DCMAKE_C_FLAGS_RELEASE="-march=native -mtune=native -O3 -fPIC -flto=auto -fomit-frame-pointer -fdata-sections -ffunction-sections -Wl,--gc-sections" \
+-DCMAKE_CXX_FLAGS_RELEASE="-march=native -mtune=native -O3 -fPIC -flto=auto -fomit-frame-pointer -fdata-sections -ffunction-sections -Wl,--gc-sections "  
+make -j128
+make install 
 cd ../.. 
 ```
 

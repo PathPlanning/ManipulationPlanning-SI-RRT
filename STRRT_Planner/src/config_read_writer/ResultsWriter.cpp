@@ -52,7 +52,7 @@ void MDP::ResultsWriter::solver_end()
 void MDP::ResultsWriter::save_json(const std::string file_name, rapidjson::Value &additional_final_planner_metadata, int random_seed)
 {
 
-    std::string planner_type_str = "undefined"; // TODO^ optimise enum
+    std::string planner_type_str = "undefined"; // TODO: optimise enum
     if (this->planner_type == MDP::ResultsWriter::PlannerType::STRRT_STAR)
     {
         planner_type_str = "STRRT*";
@@ -77,11 +77,21 @@ void MDP::ResultsWriter::save_json(const std::string file_name, rapidjson::Value
     data_to_export.AddMember("forward_kinematics_in_collision_check_time_ns", this->algorithm_forward_kinematics_in_collision_check_time.get_elapsed_time_ns(), allocator);
     data_to_export.AddMember("forward_kinematics_in_distance_check_time_ns", this->algorithm_forward_kinematics_in_distance_check_time.get_elapsed_time_ns(), allocator);
     data_to_export.AddMember("total_forward_kinematics_time_ns", this->algorithm_forward_kinematics_check_time.get_elapsed_time_ns(), allocator);
+    data_to_export.AddMember("get_safe_interval_time_ns", this->algorithm_safe_interval_time.get_elapsed_time_ns(), allocator);
+    data_to_export.AddMember("collision_check_init_time_ns", this->collision_check_init_time.get_elapsed_time_ns(), allocator);
+    data_to_export.AddMember("safe_intervals_init_time_ns", this->safe_intervals_init_time.get_elapsed_time_ns(), allocator);
     data_to_export.AddMember("number_of_collision_checks", this->collision_check_counter, allocator);
-    // data_to_export.AddMember("number_of_broadphase_collision_checks", 0, allocator); // TODO Replace with actual
-    // data_to_export.AddMember("number_of_narrowphase_collision_checks", 0, allocator); // TODO Replace with actual
+    data_to_export.AddMember("number_of_get_safe_interval", this->safe_interval_counter, allocator);
+    data_to_export.AddMember("number_of_broadphase_collision_checks", this->collision_check_broadphase_counter, allocator); 
+    data_to_export.AddMember("number_of_narrowphase_collision_checks", this->collision_check_narrowphase_counter, allocator); 
+    data_to_export.AddMember("number_of_broadphase_get_safe_interval", this->safe_interval_broadphase_counter, allocator); 
+    data_to_export.AddMember("number_of_narrowphase_get_safe_interval", this->safe_interval_narrowphase_counter, allocator); 
     data_to_export.AddMember("number_of_distances_checks", this->distance_check_counter, allocator);
     data_to_export.AddMember("number_of_forward_kinematics", this->forward_kinematics_check_counter, allocator);
+
+    data_to_export.AddMember("number_of_detected_collisions", this->collision_count, allocator);
+    data_to_export.AddMember("number_of_safe_intervals", this->number_of_safe_intervals, allocator);
+    data_to_export.AddMember("number_of_sum_of_safe_interval_frames", this->sum_of_safe_interval_frames, allocator);
 
     data_to_export.AddMember("final_planner_data", additional_final_planner_metadata, allocator);
 
@@ -213,6 +223,12 @@ void MDP::ResultsWriter::Timer::reset() // reset timer
     this->start_time = std::chrono::steady_clock::now();
 }
 
+void MDP::ResultsWriter::Timer::set_to_zero() // reset timer
+{
+    this->is_running = false;
+    this->duration_ns = std::chrono::nanoseconds::zero();
+}
+
 void MDP::ResultsWriter::Timer::pause_timer()
 {
     if (this->is_running)
@@ -253,4 +269,31 @@ bool MDP::ResultsWriter::Timer::get_is_running() const
 std::string MDP::ResultsWriter::Timer::get_name() const
 {
     return this->name;
+}
+
+
+void MDP::ResultsWriter::restart_collision_checker(){
+    this->algorithm_collision_check_time.set_to_zero();                                         
+    this->algorithm_safe_interval_time.set_to_zero();                                          
+    this->algorithm_distance_check_time.set_to_zero();                           
+    this->algorithm_forward_kinematics_in_collision_check_time.set_to_zero();  
+    this->algorithm_forward_kinematics_in_distance_check_time.set_to_zero();  
+    this->algorithm_forward_kinematics_check_time.set_to_zero();                          
+    this->collision_check_init_time.set_to_zero();                                                   
+    this->safe_intervals_init_time.set_to_zero();       
+
+    this->collision_check_broadphase_counter = 0;
+    this->collision_check_narrowphase_counter = 0;
+    this->safe_interval_broadphase_counter = 0;
+    this->safe_interval_narrowphase_counter = 0;
+
+    this->collision_count = 0;
+    this->number_of_safe_intervals =0;
+    this->sum_of_safe_interval_frames = 0;
+    this->collision_check_counter = 0;
+    this->safe_interval_counter = 0;
+    this->distance_check_counter = 0;
+    this->forward_kinematics_check_counter = 0;
+
+
 }

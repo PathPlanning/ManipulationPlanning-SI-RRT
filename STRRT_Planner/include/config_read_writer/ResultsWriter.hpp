@@ -44,6 +44,7 @@ namespace MDP
             Timer &operator=(Timer &&other) = delete;      // move assignment
 
             void reset();          // reset timer, set counted time to zero and start counting again;
+            void set_to_zero();    // set counted time to zero without starting counting again;
             void pause_timer();    // stop timer, save elapsed time to counter
             void continue_timer(); // start paused timer
             bool get_is_running() const;
@@ -103,6 +104,9 @@ namespace MDP
         std::result_of_t<F && (Args && ...)> collision_check_wrapper(F &&fn, Args &&...args);
 
         template <typename F, typename... Args>
+        std::result_of_t<F && (Args && ...)> safe_interval_wrapper(F &&fn, Args &&...args);
+
+        template <typename F, typename... Args>
         std::result_of_t<F && (Args && ...)> distance_check_wrapper(F &&fn, Args &&...args);
 
         template <typename F, typename... Args>
@@ -130,6 +134,18 @@ namespace MDP
 
         void save_error_json(const std::string &error_msg);
 
+        uint64_t collision_check_broadphase_counter = 0;
+        uint64_t collision_check_narrowphase_counter = 0;
+        uint64_t safe_interval_broadphase_counter = 0;
+        uint64_t safe_interval_narrowphase_counter = 0;
+
+        uint64_t collision_count = 0;
+        uint64_t number_of_safe_intervals =0;
+        uint64_t sum_of_safe_interval_frames = 0;
+        Timer collision_check_init_time{"collision_check_init_time"};                                                       // time spend by initialising and build aabb trees for collision check
+        Timer safe_intervals_init_time{"safe_intervals_init_time"};                                                         // time spend by initialising and build aabb trees for safe_intervals
+
+        void restart_collision_checker();
     private:
         ResultsWriter() = default;                                     // constructor
         ResultsWriter(const ResultsWriter &other) = delete;            // copy constructor
@@ -146,16 +162,18 @@ namespace MDP
         Timer algorithm_full_time{"algorithm_full_time"};                                                                   // time from algorithm start to save_json() call
         Timer algorithm_config_time{"algorithm_config_time"};                                                               // time from algorithm start to start of planner solving
         Timer algorithm_collision_check_time{"algorithm_collision_check_time"};                                             // time in collision_check function
+        Timer algorithm_safe_interval_time{"algorithm_safe_interval_time"};                                                 // time in geT_safe_intevals function
         Timer algorithm_distance_check_time{"algorithm_distance_check_time"};                                               // time in get distance function
         Timer algorithm_forward_kinematics_in_collision_check_time{"algorithm_forward_kinematics_in_collision_check_time"}; // time in solving forward kinematics when checking collision
         Timer algorithm_forward_kinematics_in_distance_check_time{"algorithm_forward_kinematics_in_distance_check_time"};   // time in solving forward kinematics
         Timer algorithm_forward_kinematics_check_time{"algorithm_forward_kinematics_check_time"};                           // time in solving forward kinematics
         Timer algorithm_solving_time{"algorithm_solving_time"};                                                             // time spend by planner->solve function
 
-        uint64_t collision_check_counter;
-        uint64_t distance_check_counter;
-        uint64_t forward_kinematics_check_counter;
-
+        uint64_t collision_check_counter = 0;
+        uint64_t safe_interval_counter = 0;
+        uint64_t distance_check_counter = 0;
+        uint64_t forward_kinematics_check_counter = 0;
+        
         std::vector<PlannerResults> results_path_cost_metadata;
 
         rapidjson::Document data_to_export;
@@ -185,6 +203,12 @@ template <typename F, typename... Args>
 std::result_of_t<F && (Args && ...)> MDP::ResultsWriter::collision_check_wrapper(F &&fn, Args &&...args)
 {
     return this->timer_counter_function_wrapper(this->algorithm_collision_check_time, this->collision_check_counter, std::forward<F>(fn), std::forward<Args>(args)...);
+}
+
+template <typename F, typename... Args>
+std::result_of_t<F && (Args && ...)> MDP::ResultsWriter::safe_interval_wrapper(F &&fn, Args &&...args)
+{
+    return this->timer_counter_function_wrapper(this->algorithm_safe_interval_time, this->safe_interval_counter, std::forward<F>(fn), std::forward<Args>(args)...);
 }
 
 template <typename F, typename... Args>

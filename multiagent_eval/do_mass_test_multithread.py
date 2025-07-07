@@ -10,15 +10,17 @@ import os
 import json
 import copy
 import shutil
+import time
 from scipy import interpolate
 import numpy as np
 from typing import List
 from concurrent.futures import ProcessPoolExecutor
-NUM_CPUS = 5
-
-
-
-def create_one_agent_scene_task_json(start_configuration:List[float], goal_configuration:List[float], goal_count, start_frame:int, obstacles:List[dict], scene_parsed_data: dict, robot: dict,filename_prefix: str, file_dir_path:str, frame_count:int)->str:
+from tqdm import tqdm
+import subprocess
+NUM_CPUS = 126
+MAX_ATTEMPTS=5
+MAX_FILE_FIND_ATTEMPS = 10
+def create_one_agent_scene_task_json(start_configuration:List[float], goal_configuration:List[float], goal_count, start_frame:int, obstacles:List[dict], scene_parsed_data: dict, robot: dict,filename_prefix: str, file_dir_path:str, frame_count:int,atempt)->str:
     """
     Creates a one-agent scene task json file for a given robot
     
@@ -45,6 +47,8 @@ def create_one_agent_scene_task_json(start_configuration:List[float], goal_confi
     data['start_configuration'] = start_configuration
     data['end_configuration'] = goal_configuration
     data['frame_count'] = frame_count
+    data["urdf_file_path"] = 'Blender/robots/xarm6/xarm6cyl.urdf' #r["robot_urdf"]
+    
     # add another robots as static obstacles, if they don't have a planned path
     planned_robots = [another_robot["name"] for another_robot in obstacles if 'name' in another_robot]
     planned_robots.append(robot["name"])
@@ -54,7 +58,7 @@ def create_one_agent_scene_task_json(start_configuration:List[float], goal_confi
         r = copy.deepcopy(another_robot)
         r["type"] = "dynamic_robot"
         r["trajectory"] = [r['start_configuration'] for _ in range(data['frame_count'])]
-        r["urdf_file_path"] = 'Blender/robots/xarm6/xarm6.urdf' #r["robot_urdf"]
+        r["urdf_file_path"] = 'Blender/robots/xarm6/xarm6cyl.urdf' #r["robot_urdf"]
         data["obstacles"].append(r)
         
     del data["robots"]
@@ -67,7 +71,8 @@ def create_one_agent_scene_task_json(start_configuration:List[float], goal_confi
             r = copy.deepcopy(obstacle)
             r["type"] = "dynamic_robot"
             r["trajectory"] = [r["trajectory"][-1] for _ in range(data['frame_count'])]
-            r["urdf_file_path"] = 'Blender/robots/xarm6/xarm6s.urdf' #r["robot_urdf"]
+            r["urdf_file_path"] = 'Blender/robots/xarm6/xarm6cyl.urdf' #r["robot_urdf"]
+            data["obstacles"].append(r)
             continue
         
         new_obstacle = copy.deepcopy(obstacle)
@@ -76,12 +81,26 @@ def create_one_agent_scene_task_json(start_configuration:List[float], goal_confi
             new_obstacle["trajectory"].extend([new_obstacle["trajectory"][-1] for _ in range(data['frame_count'] - len(new_obstacle["trajectory"]))])
         data["obstacles"].append(new_obstacle)
         
-    filename = filename_prefix +'scene_task_robot_'+robot["name"]+f"_goal_{goal_count}"+".json"
+    filename = filename_prefix +'scene_task_robot_'+robot["name"]+f"_goal_{goal_count}_attempt_{atempt}"+".json"
     file_path = os.path.join(file_dir_path,filename)
     # print(file_path)
     with open(file_path, 'w') as f:
         json.dump(data, f)
-
+    q=0
+    while True:
+        q+=1
+        try:
+            with open(file_path, 'r') as f:
+                zsdasf = json.load(f)
+                z = zsdasf["start_configuration"]
+                break
+        except BaseException:
+            print(f"waiting json dump of file {file_path}")
+            time.sleep(5)
+        if q >10:
+            with open(file_path, 'w') as f:
+                json.dump(data, f)
+        time.sleep(0.1)
     return file_path
 
 
@@ -118,7 +137,7 @@ def interpolate_raw_path(strrtlogs, fps, frame_count):
     
     return interpolated_array.tolist()
 
-def process_one_task_MSIRRT(test_dir_path:str ,path_to_strrt_config_json:str) -> None:
+def process_one_task_MSIRRT(test_dir_path:str ,path_to_strrt_config_json:str,seed,test_count_number,full_test_number) -> None:
     """processes one multiagent task
     Args:
         test_dir_path (str): path to multiagent task
@@ -126,10 +145,10 @@ def process_one_task_MSIRRT(test_dir_path:str ,path_to_strrt_config_json:str) ->
     """
     path_to_json = os.path.join(test_dir_path,"multiagent_scene_task.json")
     
-    if os.path.exists(os.path.join(test_dir_path,"multiagent_scene_task.json","generated_tasks_msirrt","robot_trajectories.json")):
-        return
-    if os.path.exists(os.path.join(test_dir_path,"multiagent_scene_task.json","generated_tasks_msirrt")):
-        shutil.rmtree(os.path.join(test_dir_path,"multiagent_scene_task.json","generated_tasks_msirrt"))
+    # if os.path.exists(os.path.join(test_dir_path,"generated_tasks_msirrt","robot_trajectories.json")):
+    #     return
+    # if os.path.exists(os.path.join(test_dir_path,"generated_tasks_msirrt")):
+    #     shutil.rmtree(os.path.join(test_dir_path,"generated_tasks_msirrt"),ignore_errors=True)
     
     with open(path_to_json, 'r') as file:
         data = file.read()
@@ -144,10 +163,10 @@ def process_one_task_MSIRRT(test_dir_path:str ,path_to_strrt_config_json:str) ->
     # create scene task for next robot
 
     planned_robots = []
-    path_to_generated_tasks = os.path.join(test_dir_path,"generated_tasks_msirrt")
+    path_to_generated_tasks = os.path.join(test_dir_path,f"generated_tasks_msirrt_seed_{seed}")
     # print(path_to_generated_tasks)
-    if os.path.isdir(path_to_generated_tasks):
-        shutil.rmtree(path_to_generated_tasks)
+    # if os.path.isdir(path_to_generated_tasks):
+    #     shutil.rmtree(path_to_generated_tasks)
     os.makedirs(path_to_generated_tasks, exist_ok=False)
     
     init_scene_parsed_data = copy.deepcopy(scene_parsed_data)
@@ -161,45 +180,60 @@ def process_one_task_MSIRRT(test_dir_path:str ,path_to_strrt_config_json:str) ->
         start_frame = 0
         for goal_count, goal_configuration in enumerate(robot['end_configuration']):
             need_to_go = True
-            max_frame_count = 600
+            max_frame_count = 200
             attempt=1
             while need_to_go:
+                frame_count = int(500*attempt**1.3) # heuristic
+                
                 scene_task_filepath = create_one_agent_scene_task_json( 
                 start_configuration, goal_configuration, goal_count, start_frame, obstacles,
-                scene_parsed_data, robot, "msirrt_", path_to_generated_tasks,max_frame_count*attempt)
-                print(
-                    f"./MSIRRT/build/MSIRRT_Planner {scene_task_filepath} {path_to_generated_tasks} {path_to_strrt_config_json} 1")
-                os.system(
-                    f"./MSIRRT/build/MSIRRT_Planner {scene_task_filepath} {path_to_generated_tasks} {path_to_strrt_config_json} 1")
+                scene_parsed_data, robot, "msirrt_", path_to_generated_tasks,frame_count*attempt,attempt)
+
+                command = f"./MSIRRT/build/MSIRRT_Planner {scene_task_filepath} {path_to_generated_tasks} {path_to_strrt_config_json} {seed}"
                 
-                result_filename = list(filter(lambda x: x.startswith("MSIRRT_planner_logs"), os.listdir(path_to_generated_tasks)))
-                if len(result_filename) ==0:
+                # print(command)
+                result = subprocess.run(command, shell=True)
+                if result.returncode != 0:
+                    print("error occured!")
                     attempt+=1
-                    if attempt>10:
+                    if attempt>MAX_ATTEMPTS:
                         break
                     continue
+                
+                file_finding_attempt = 0
+                while True:
+                    file_finding_attempt+=1
+                    result_filename = list(filter(lambda x: x.startswith("MSIRRT_planner_logs"), os.listdir(path_to_generated_tasks)))
+                    if len(result_filename) == 0:
+                        assert(file_finding_attempt<=MAX_FILE_FIND_ATTEMPS)
+                        print("didnt found file, waiting...")
+                        time.sleep(1)
+                        continue
+                    break
                 
                 result_filename = result_filename[0]
                 new_result_filename = f"start_frame_{start_frame}_" + result_filename[:-5] + f'_for_{robot["name"]}.json'
                 new_result_filepath = os.path.join(path_to_generated_tasks,new_result_filename) 
-                shutil.copyfile(os.path.join(path_to_generated_tasks,result_filename), new_result_filepath)
-                os.remove(os.path.join(path_to_generated_tasks,result_filename))
+                
+                os.rename(os.path.join(path_to_generated_tasks,result_filename), new_result_filepath)
                 with open(new_result_filepath, 'r') as file:
                     strrtlogs_raw = file.read()
                 
                 #check if planning was successful
                 strrtlogs = json.loads(strrtlogs_raw)
                 # print(strrtlogs["final_planner_data"])
+                assert(strrtlogs["path_to_scene_json"] == scene_task_filepath)
                 if not strrtlogs["final_planner_data"]["has_result"]:
                     attempt+=1
-                    if attempt>10:
+                    if attempt>MAX_ATTEMPTS:
                         break
                     continue
                 break
 
             if not strrtlogs["final_planner_data"]["has_result"]:
                 with open(os.path.join(path_to_generated_tasks,"robot_trajectories.json"), 'w') as file:
-                    obstacles["error"] = "no_path_found"
+                    obstacles.append({"result":False})
+                    obstacles.append({"error":"no_path_found"})
                     json.dump(obstacles, file)
                 return 
             assert(strrtlogs["final_planner_data"]["has_result"])
@@ -219,23 +253,22 @@ def process_one_task_MSIRRT(test_dir_path:str ,path_to_strrt_config_json:str) ->
         obstacles.append(copy.deepcopy(robot))
         # print([x["name"] for x in obstacles])
         
-        with open(os.path.join(path_to_generated_tasks,"robot_trajectories.json"), 'w') as file:
-            json.dump(obstacles, file)
- 
- 
+        # with open(os.path.join(path_to_generated_tasks,"robot_trajectories.json"), 'w') as file:
+        #     json.dump(obstacles, file)
 
-def process_one_task_STRRT(test_dir_path:str ,path_to_strrt_config_json:str) -> None:
+    with open(os.path.join(path_to_generated_tasks,"robot_trajectories.json"), 'w') as file:
+        obstacles.append({"result":True})
+        json.dump(obstacles, file)
+    print(f'done test №{test_count_number}/{full_test_number}')
+ 
+ 
+def process_one_task_STRRT(test_dir_path:str ,path_to_strrt_config_json:str,seed,test_count_number,full_test_number) -> None:
     """processes one multiagent task
     Args:
         test_dir_path (str): path to multiagent task
         
     """
     path_to_json = os.path.join(test_dir_path,"multiagent_scene_task.json")
-    
-    if os.path.exists(os.path.join(test_dir_path,"multiagent_scene_task.json","generated_tasks_strrt","robot_trajectories.json")):
-        return
-    if os.path.exists(os.path.join(test_dir_path,"multiagent_scene_task.json","generated_tasks_strrt")):
-        shutil.rmtree(os.path.join(test_dir_path,"multiagent_scene_task.json","generated_tasks_strrt"))
     
     with open(path_to_json, 'r') as file:
         data = file.read()
@@ -250,10 +283,10 @@ def process_one_task_STRRT(test_dir_path:str ,path_to_strrt_config_json:str) -> 
     # create scene task for next robot
 
     planned_robots = []
-    path_to_generated_tasks = os.path.join(test_dir_path,"generated_tasks_strrt")
+    path_to_generated_tasks = os.path.join(test_dir_path,f"generated_tasks_strrt_seed_{seed}")
     # print(path_to_generated_tasks)
-    if os.path.isdir(path_to_generated_tasks):
-        shutil.rmtree(path_to_generated_tasks)
+    # if os.path.isdir(path_to_generated_tasks):
+    #     shutil.rmtree(path_to_generated_tasks)
     os.makedirs(path_to_generated_tasks, exist_ok=False)
     
     init_scene_parsed_data = copy.deepcopy(scene_parsed_data)
@@ -267,45 +300,61 @@ def process_one_task_STRRT(test_dir_path:str ,path_to_strrt_config_json:str) -> 
         start_frame = 0
         for goal_count, goal_configuration in enumerate(robot['end_configuration']):
             need_to_go = True
-            max_frame_count = 600
+            max_frame_count = 200
             attempt=1
             while need_to_go:
+                frame_count = int(500*attempt**1.3) # heuristic
+                
                 scene_task_filepath = create_one_agent_scene_task_json( 
                 start_configuration, goal_configuration, goal_count, start_frame, obstacles,
-                scene_parsed_data, robot, "msirrt_", path_to_generated_tasks,max_frame_count*attempt)
-                print(
-                    f"./STRRT_Planner/build/STRRT_Planner {scene_task_filepath} {path_to_generated_tasks} {path_to_strrt_config_json} 1")
-                os.system(
-                    f"./STRRT_Planner/build/STRRT_Planner {scene_task_filepath} {path_to_generated_tasks} {path_to_strrt_config_json} 1")
+                scene_parsed_data, robot, "strrt_", path_to_generated_tasks,frame_count*attempt,attempt)
+
+                command = f"./STRRT_Planner/build/STRRT_Planner {scene_task_filepath} {path_to_generated_tasks} {path_to_strrt_config_json} {seed}"
                 
-                result_filename = list(filter(lambda x: x.startswith("STRRT*_planner_logs"), os.listdir(path_to_generated_tasks)))
-                if len(result_filename) ==0:
+                # print(command)
+                result = subprocess.run(command, shell=True)
+                if result.returncode != 0:
+                    # print(command)
+                    print("error occured!")
                     attempt+=1
-                    if attempt>10:
+                    if attempt>MAX_ATTEMPTS:
                         break
                     continue
+                
+                file_finding_attempt = 0
+                while True:
+                    file_finding_attempt+=1
+                    result_filename = list(filter(lambda x: x.startswith("STRRT*_planner_logs"), os.listdir(path_to_generated_tasks)))
+                    if len(result_filename) == 0:
+                        assert(file_finding_attempt<=MAX_FILE_FIND_ATTEMPS)
+                        print("didnt found file, waiting...")
+                        time.sleep(1)
+                        continue
+                    break
                 
                 result_filename = result_filename[0]
                 new_result_filename = f"start_frame_{start_frame}_" + result_filename[:-5] + f'_for_{robot["name"]}.json'
                 new_result_filepath = os.path.join(path_to_generated_tasks,new_result_filename) 
-                shutil.copyfile(os.path.join(path_to_generated_tasks,result_filename), new_result_filepath)
-                os.remove(os.path.join(path_to_generated_tasks,result_filename))
+                
+                os.rename(os.path.join(path_to_generated_tasks,result_filename), new_result_filepath)
                 with open(new_result_filepath, 'r') as file:
                     strrtlogs_raw = file.read()
                 
                 #check if planning was successful
                 strrtlogs = json.loads(strrtlogs_raw)
                 # print(strrtlogs["final_planner_data"])
+                assert(strrtlogs["path_to_scene_json"] == scene_task_filepath)
                 if not strrtlogs["final_planner_data"]["has_result"]:
                     attempt+=1
-                    if attempt>10:
+                    if attempt>MAX_ATTEMPTS:
                         break
                     continue
                 break
 
             if not strrtlogs["final_planner_data"]["has_result"]:
                 with open(os.path.join(path_to_generated_tasks,"robot_trajectories.json"), 'w') as file:
-                    obstacles["error"] = "no_path_found"
+                    obstacles.append({"result":False})
+                    obstacles.append({"error":"no_path_found"})
                     json.dump(obstacles, file)
                 return 
             assert(strrtlogs["final_planner_data"]["has_result"])
@@ -325,8 +374,123 @@ def process_one_task_STRRT(test_dir_path:str ,path_to_strrt_config_json:str) -> 
         obstacles.append(copy.deepcopy(robot))
         # print([x["name"] for x in obstacles])
         
-        with open(os.path.join(path_to_generated_tasks,"robot_trajectories.json"), 'w') as file:
-            json.dump(obstacles, file)
+        # with open(os.path.join(path_to_generated_tasks,"robot_trajectories.json"), 'w') as file:
+        #     json.dump(obstacles, file)
+
+    with open(os.path.join(path_to_generated_tasks,"robot_trajectories.json"), 'w') as file:
+        obstacles.append({"result":True})
+        json.dump(obstacles, file)
+    print(f'done test №{test_count_number}/{full_test_number}')
+# def process_one_task_STRRT(test_dir_path:str ,path_to_strrt_config_json:str) -> None:
+#     """processes one multiagent task
+#     Args:
+#         test_dir_path (str): path to multiagent task
+        
+#     """
+#     path_to_json = os.path.join(test_dir_path,"multiagent_scene_task.json")
+    
+#     if os.path.exists(os.path.join(test_dir_path,"generated_tasks_strrt","robot_trajectories.json")):
+#         return
+#     if os.path.exists(os.path.join(test_dir_path,"generated_tasks_strrt")):
+#         shutil.rmtree(os.path.join(test_dir_path,"generated_tasks_strrt"))
+    
+#     with open(path_to_json, 'r') as file:
+#         data = file.read()
+
+#     # parse scene-task json data
+#     scene_parsed_data = json.loads(data)
+
+#     # for every robot in scene
+#     # create scene task for 1 robot
+#     # plan
+#     # get plan results, get path
+#     # create scene task for next robot
+
+#     planned_robots = []
+#     path_to_generated_tasks = os.path.join(test_dir_path,"generated_tasks_strrt")
+#     # print(path_to_generated_tasks)
+#     # if os.path.isdir(path_to_generated_tasks):
+#     #     shutil.rmtree(path_to_generated_tasks)
+#     os.makedirs(path_to_generated_tasks, exist_ok=False)
+    
+#     init_scene_parsed_data = copy.deepcopy(scene_parsed_data)
+    
+
+#     obstacles = []
+
+#     for robot in init_scene_parsed_data["robots"]:
+#         start_configuration = robot['start_configuration']
+#         result_trajectory = []
+#         start_frame = 0
+#         for goal_count, goal_configuration in enumerate(robot['end_configuration']):
+#             need_to_go = True
+#             max_frame_count = 600
+#             attempt=1
+#             while need_to_go:
+#                 scene_task_filepath = create_one_agent_scene_task_json( 
+#                 start_configuration, goal_configuration, goal_count, start_frame, obstacles,
+#                 scene_parsed_data, robot, "msirrt_", path_to_generated_tasks,max_frame_count*attempt)
+                
+#                 command = f"./STRRT_Planner/build/STRRT_Planner {scene_task_filepath} {path_to_generated_tasks} {path_to_strrt_config_json} 1"
+                
+#                 print(command)
+#                 result = subprocess.run(
+#                     f"./STRRT_Planner/build/check_scene ./check_collisions_start.json", shell=True
+#                 )
+#                 if result.returncode != 0:
+#                     print("error occured!")
+#                     time.sleep(3)
+#                     continue
+
+#                 result_filename = list(filter(lambda x: x.startswith("STRRT*_planner_logs"), os.listdir(path_to_generated_tasks)))
+#                 if len(result_filename) ==0:
+#                     attempt+=1
+#                     if attempt>10:
+#                         break
+#                     continue
+                
+#                 result_filename = result_filename[0]
+#                 new_result_filename = f"start_frame_{start_frame}_" + result_filename[:-5] + f'_for_{robot["name"]}.json'
+#                 new_result_filepath = os.path.join(path_to_generated_tasks,new_result_filename) 
+#                 shutil.copyfile(os.path.join(path_to_generated_tasks,result_filename), new_result_filepath)
+#                 os.remove(os.path.join(path_to_generated_tasks,result_filename))
+#                 with open(new_result_filepath, 'r') as file:
+#                     strrtlogs_raw = file.read()
+                
+#                 #check if planning was successful
+#                 strrtlogs = json.loads(strrtlogs_raw)
+#                 # print(strrtlogs["final_planner_data"])
+#                 if not strrtlogs["final_planner_data"]["has_result"]:
+#                     attempt+=1
+#                     if attempt>10:
+#                         break
+#                     continue
+#                 break
+
+#             if not strrtlogs["final_planner_data"]["has_result"]:
+#                 with open(os.path.join(path_to_generated_tasks,"robot_trajectories.json"), 'w') as file:
+#                     obstacles["error"] = "no_path_found"
+#                     json.dump(obstacles, file)
+#                 return 
+#             assert(strrtlogs["final_planner_data"]["has_result"])
+#             trajectory = []
+
+#             end_frame = int(np.ceil(strrtlogs['final_planner_data']['final_path'][-1]['time']*scene_parsed_data['fps']))
+#             trajectory = interpolate_raw_path(
+#                 strrtlogs, scene_parsed_data['fps'], end_frame)
+#             result_trajectory.append(trajectory)
+#             start_frame += end_frame
+#             start_configuration = goal_configuration
+
+#         robot['type'] = "dynamic_robot"
+#         robot['trajectory'] = [configuration for trajectory in result_trajectory for configuration in trajectory]
+#         robot["urdf_file_path"] = robot["robot_urdf"]
+        
+#         obstacles.append(copy.deepcopy(robot))
+#         # print([x["name"] for x in obstacles])
+        
+#         with open(os.path.join(path_to_generated_tasks,"robot_trajectories.json"), 'w') as file:
+#             json.dump(obstacles, file)
         
 def main(path_to_tasks: str, path_to_strrt_config_json: str) -> None:
     """Plan path for given multiagent blender scene with stRRT and drgbt
@@ -339,17 +503,23 @@ def main(path_to_tasks: str, path_to_strrt_config_json: str) -> None:
     tasks_by_robot_count = os.listdir(path_to_tasks)
         
     futures = []
+    tests = []
+    for robot_count in tasks_by_robot_count:
+        test_cases = os.listdir(os.path.join(path_to_tasks,robot_count))
+        for test_case in test_cases:
+            # for i in range(10):
+            test_dir_path = os.path.join(path_to_tasks,robot_count,test_case)
+            tests.append(test_dir_path)
+        
     with ProcessPoolExecutor(max_workers=NUM_CPUS) as executor:
-        for robot_count in tasks_by_robot_count:
-            test_cases = os.listdir(os.path.join(path_to_tasks,robot_count))
-            for test_case in test_cases:
-                for i in range(10):
-                    test_dir_path = os.path.join(path_to_tasks,robot_count,test_case)
-                    ()
-                    futures.append(executor.submit(process_one_task_MSIRRT, test_dir_path, path_to_strrt_config_json))
+        c = 0
+        for test_dir_path in tqdm(tests):
+            for i in range(0,2):
+                c+=1
+                futures.append(executor.submit(process_one_task_STRRT, test_dir_path, path_to_strrt_config_json,i,c,len(tests)*5))
                     
         
-    for future in futures:
+    for future in tqdm(futures):
         future.result()
 
 

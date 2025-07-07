@@ -43,6 +43,8 @@ def create_one_agent_scene_task_json(start_configuration:List[float], goal_confi
     data['start_configuration'] = start_configuration
     data['end_configuration'] = goal_configuration
     data['frame_count'] = frame_count
+    data["urdf_file_path"] = 'Blender/robots/xarm6/xarm6cyl.urdf' #r["robot_urdf"]
+    
     # add another robots as static obstacles, if they don't have a planned path
     planned_robots = [another_robot["name"] for another_robot in obstacles if 'name' in another_robot]
     planned_robots.append(robot["name"])
@@ -52,7 +54,7 @@ def create_one_agent_scene_task_json(start_configuration:List[float], goal_confi
         r = copy.deepcopy(another_robot)
         r["type"] = "dynamic_robot"
         r["trajectory"] = [r['start_configuration'] for _ in range(data['frame_count'])]
-        r["urdf_file_path"] = 'Blender/robots/xarm6/xarm6.urdf' #r["robot_urdf"]
+        r["urdf_file_path"] = 'Blender/robots/xarm6/xarm6cyl.urdf' #r["robot_urdf"]
         data["obstacles"].append(r)
         
     del data["robots"]
@@ -65,7 +67,7 @@ def create_one_agent_scene_task_json(start_configuration:List[float], goal_confi
             r = copy.deepcopy(obstacle)
             r["type"] = "dynamic_robot"
             r["trajectory"] = [r["trajectory"][-1] for _ in range(data['frame_count'])]
-            r["urdf_file_path"] = 'Blender/robots/xarm6/xarm6s.urdf' #r["robot_urdf"]
+            r["urdf_file_path"] = 'Blender/robots/xarm6/xarm6cyl.urdf' #r["robot_urdf"]
             continue
         
         new_obstacle = copy.deepcopy(obstacle)

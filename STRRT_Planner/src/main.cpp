@@ -159,7 +159,7 @@ int main(int argc, char **argv)
     auto time_space = std::make_shared<ob::TimeStateSpace>();
     auto space = std::make_shared<ob::SpaceTimeStateSpace>(vector_space, SceneTask.get_scene_task().robot_joint_max_velocity[0],0.5); // TODO: max velocity for each joint
     
-    space->setTimeBounds(0.0,  (double)((double)SceneTask.get_scene_task().frame_count/(double)SceneTask.get_scene_task().fps));
+    space->setTimeBounds(0.0,  (double)(((double)SceneTask.get_scene_task().frame_count)/(double)SceneTask.get_scene_task().fps -0.001)); // -0.001 to fix floating point rounding errors
     ob::SpaceInformationPtr si(new ob::SpaceInformation(space));
 
     std::shared_ptr<MDP::StateValidityCheckerFunctor> state_cheker = std::make_shared<MDP::StateValidityCheckerFunctor>(si, SceneTask.get_scene_task());
@@ -176,8 +176,8 @@ int main(int argc, char **argv)
         goal->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[i] = SceneTask.get_scene_task().end_configuration[i];
     }
     start->as<ob::CompoundState>()->as<ob::TimeStateSpace::StateType>(1)->position = 0.0;
-    goal->as<ob::CompoundState>()->as<ob::TimeStateSpace::StateType>(1)->position = (double)(SceneTask.get_scene_task().frame_count-1) / (double)SceneTask.get_scene_task().fps;
-
+    goal->as<ob::CompoundState>()->as<ob::TimeStateSpace::StateType>(1)->position = (double)(SceneTask.get_scene_task().frame_count) / (double)SceneTask.get_scene_task().fps  -0.001; // -0.001 to fix floating point rounding errors
+    // std::cout<<(double)(SceneTask.get_scene_task().frame_count) / (double)SceneTask.get_scene_task().fps << " "<<((double)(SceneTask.get_scene_task().frame_count) / (double)SceneTask.get_scene_task().fps) * (double)SceneTask.get_scene_task().fps<<std::endl;
     
     if(!si->satisfiesBounds(start.get())){
         MDP::ResultsWriter::get_instance().save_error_json("start pose does not satisfy bounds");
@@ -192,11 +192,13 @@ int main(int argc, char **argv)
         MDP::ResultsWriter::get_instance().save_error_json("start pose is not valid (self crossing detected)!");
         assert(si->isValid(start.get()));
     }
-    if(!si->isValid(goal.get())){
 
-        MDP::ResultsWriter::get_instance().save_error_json("goal pose is not valid (self crossing detected)!");
-        assert(si->isValid(goal.get()));
-    }
+    // Don't need for multiagent task
+    // if(!si->isValid(goal.get())){
+
+    //     MDP::ResultsWriter::get_instance().save_error_json("goal pose is not valid (self crossing detected)!");
+    //     assert(si->isValid(goal.get()));
+    // }
 
     
     std::shared_ptr<ob::ProblemDefinition> pdef = std::make_shared<ob::ProblemDefinition>(si);
