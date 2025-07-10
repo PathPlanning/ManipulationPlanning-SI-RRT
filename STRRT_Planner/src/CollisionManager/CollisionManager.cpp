@@ -13,8 +13,10 @@
 #include "config_read_writer/ResultsWriter.hpp"
 #include "coal/broadphase/broadphase_callbacks.h"
 #include <random>
+#include <fstream>
+#include <cstdlib>
 
-MDP::CollisionManager::CollisionManager(const MDP::ConfigReader::SceneTask _scene_task) : planned_robot(_scene_task.robot_urdf_path, _scene_task.robot_base_position_vector, _scene_task.robot_joints_order, std::vector<std::vector<double>>()),
+MDP::CollisionManager::CollisionManager(const MDP::ConfigReader::SceneTask _scene_task) : planned_robot(_scene_task.robot_urdf_path, _scene_task.robot_base_position_vector, _scene_task.robot_joints_order, std::vector<MDP::RobotObstacleJsonInfo::PathState>(),_scene_task,false),
                                                                                           scene_task(_scene_task)
 { // init robot (in initializer list)
 
@@ -44,9 +46,9 @@ MDP::CollisionManager::CollisionManager(const MDP::ConfigReader::SceneTask _scen
     this->robot_obstacle_all_joint_count = 0;
     for (MDP::RobotObstacleJsonInfo obstacle : scene_task.robot_obstacles)
     {
-        if (obstacle.get_type() == "dynamic_robot")
+        if (obstacle.get_type() == "dynamic_robot" | obstacle.get_type() == "static_robot")
         {
-            this->robot_obstacles.emplace_back(obstacle.get_urdf_file_path(), obstacle.get_base_coordinates(), obstacle.get_robot_joints_order(), obstacle.get_trajectory());
+            this->robot_obstacles.emplace_back(obstacle.get_urdf_file_path(), obstacle.get_base_coordinates(), obstacle.get_robot_joints_order(), obstacle.get_trajectory(),this->scene_task,obstacle.get_is_static());
             this->robot_obstacle_all_joint_count += this->robot_obstacles.back().get_geometric_shapes().size();
         }
     }
@@ -808,4 +810,24 @@ void MDP::CollisionManager::benchmark_broadphase()
     {
         std::cout << i << "manager collide time: " << results[i] << std::endl;
     }
+}
+
+
+std::vector<MDP::RobotObstacleFCL> MDP::CollisionManager::get_robot_obstacles() const
+{
+    return this->robot_obstacles;
+}
+
+std::vector<MDP::ObjectObstacleFCL *> MDP::CollisionManager::get_obstacles() const
+{
+    return this->obstacles;
+}
+
+MDP::ConfigReader::SceneTask MDP::CollisionManager::get_scene_task() const
+{
+    return this->scene_task;
+}
+
+MDP::RobotObstacleFCL MDP::CollisionManager::get_planned_robot() const{
+    return this->planned_robot;
 }

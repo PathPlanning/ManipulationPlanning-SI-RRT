@@ -42,3 +42,5 @@ tests/
 .venv/
 
 multiagent_tests*/
+
+position_logs_*

@@ -11,7 +11,7 @@ import numpy as np
 import copy
 import subprocess
 from concurrent.futures import ProcessPoolExecutor
-NUM_CPUS = 128
+NUM_CPUS = 8
 
 
 def get_robot(name, coords, rotation):
@@ -80,8 +80,8 @@ def is_collision(scene, get_angles_func,dir):
     data["start_configuration"] = get_angles_func(data["robots"][0])
     data["end_configuration"] = get_angles_func(data["robots"][0])
     for robot in data["robots"][1:]:
-        robot["type"] = "dynamic_robot"
-        robot["trajectory"] = [get_angles_func(robot)]
+        robot["type"] = "static_robot"
+        robot["trajectory"] = [{"time":0.0,"robot_angles":get_angles_func(robot)}]
         robot["urdf_file_path"] = robot["robot_urdf"]
         data["obstacles"].append(robot)
 
@@ -91,11 +91,12 @@ def is_collision(scene, get_angles_func,dir):
 
     with open(filename, "w") as f:
         json.dump(data, f)
-
+    # print(f"./STRRT_Planner/build/check_scene {filename}")
     result = subprocess.run(
         f"./STRRT_Planner/build/check_scene {filename}", shell=True
     )
     if result.returncode != 0:
+        # raise BaseException
         return True
     return False
 
@@ -110,22 +111,23 @@ def test_goal(scene, testing_robot, goal_angles, dir):
     for another_robot in data["robots"]:
         if another_robot["name"] == testing_robot["name"]:
             continue
-        another_robot["type"] = "dynamic_robot"
-        another_robot["trajectory"] = [another_robot["start_configuration"]]
+        another_robot["type"] = "static_robot"
+        another_robot["trajectory"] = [{"time":0.0,"robot_angles":another_robot["start_configuration"]}]
         another_robot["urdf_file_path"] = another_robot["robot_urdf"]
         data["obstacles"].append(another_robot)
 
     del data["robots"]
     data['frame_count']=1
-    filename = os.path.join(dir,"check_collisions.json")
+    filename = os.path.join(dir,"check_collisions_goal.json")
 
     with open(filename, "w") as f:
         json.dump(data, f)
-
+    # print(f"./STRRT_Planner/build/check_scene {filename}")
     result = subprocess.run(
         f"./STRRT_Planner/build/check_scene {filename}", shell=True
     )
     if result.returncode != 0:
+        # raise BaseException
         return True
     
 
@@ -140,7 +142,7 @@ def test_goal(scene, testing_robot, goal_angles, dir):
         if another_robot["name"] == testing_robot["name"]:
             continue
         another_robot["type"] = "dynamic_robot"
-        another_robot["trajectory"] = [another_robot["start_configuration"]]*3000
+        another_robot["trajectory"] = [{"time":0.0,"robot_angles":another_robot["start_configuration"]}]
         another_robot["urdf_file_path"] = another_robot["robot_urdf"]
         data["obstacles"].append(another_robot)
 
@@ -150,18 +152,19 @@ def test_goal(scene, testing_robot, goal_angles, dir):
 
     with open(filename, "w") as f:
         json.dump(data, f)
-
+    print(f"./MSIRRT/build/MSIRRT_Planner {filename} {dir} ./STRRT/strrt_config.json 1")
     result = subprocess.run(
         f"./MSIRRT/build/MSIRRT_Planner {filename} {dir} ./STRRT/strrt_config.json 1", shell=True
     )
     
     result_filename = os.path.join(dir,[x for x in os.listdir(dir) if 'MSIRRT' in x][0])
-    print(result_filename)
+    # print(result_filename)
     with open(result_filename, "r") as f:
         plann_result  = json.load(f)
     os.remove(result_filename)
     if plann_result["final_planner_data"]["has_result"]:
         return False
+    # raise BaseException
     return True
 
 def get_random_angles(robot_urdf_path):
@@ -243,7 +246,7 @@ def main() -> None:
 
 
     robot_number = [2, 4, 6, 8]
-    number_of_test_cases = 30
+    number_of_test_cases = 3
     number_of_goals = 10
     os.makedirs("multiagent_tests", exist_ok=False)
     

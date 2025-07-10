@@ -1,5 +1,5 @@
 #pragma once
-#include <ompl/geometric/planners/rrt/RRTstar.h>
+// #include <ompl/geometric/planners/rrt/RRTstar.h>
 #include <ompl/base/spaces/RealVectorStateSpace.h>
 #include <ompl/base/spaces/TimeStateSpace.h>
 #include <ompl/base/SpaceInformation.h>
@@ -17,7 +17,7 @@
 #include <config_read_writer/config_read.hpp>
 
 namespace ob = ompl::base;
-namespace og = ompl::geometric;
+// namespace og = ompl::geometric;
 
 namespace MDP
 {

@@ -1,6 +1,7 @@
 #include <chrono>
 #include <cmath>
 #include <config_read_writer/config_read.hpp>
+#include <config_read_writer/RobotObstacleJsonInfo.hpp>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -42,7 +43,7 @@ json_parser(const std::string &path_to_scene_json) {
   rapidjson::IStreamWrapper scene_wrapper(scene_file);
   rapidjson::Document scene_parsed_data;
   scene_parsed_data.ParseStream(scene_wrapper);
-  scene_parsed_data.filename=path_to_scene_json;
+  // scene_parsed_data.filename=path_to_scene_json;
   // Check for required top-level keys
   check_json_key(scene_parsed_data, "start_configuration");
   check_json_key(scene_parsed_data, "end_configuration");
@@ -150,21 +151,73 @@ json_parser(const std::string &path_to_scene_json) {
             base_coordinate_rot.GetDouble());
       }
 
-      std::vector<std::vector<double>> robot_trajectory;
+      std::vector<MDP::RobotObstacleJsonInfo::PathState> robot_trajectory;
       check_json_key(obstacles_json, "trajectory");
       for (rapidjson::Value &coordinate :
            obstacles_json["trajectory"].GetArray()) {
+        check_json_key(coordinate, "time");
+        check_json_key(coordinate, "robot_angles");
+        std::vector<double> robot_angles;
+        for (rapidjson::Value &coordinate_unit : coordinate["robot_angles"].GetArray()) {
 
-        robot_trajectory.push_back(std::vector<double>());
-        for (rapidjson::Value &coordinate_unit : coordinate.GetArray()) {
-
-          robot_trajectory.back().push_back(coordinate_unit.GetDouble());
+          robot_angles.push_back(coordinate_unit.GetDouble());
         }
+        double time = coordinate["time"].GetDouble();
+        robot_trajectory.emplace_back(robot_angles,time);
+
+      }
+      robot_obstacles.emplace_back(obstacle_name, obstacle_type, urdf_file_path,
+                                   robot_joints_order, robot_trajectory,
+                                   robot_base_coordinates_raw, fps, false);
+    } else if (obstacle_type == "static_robot") {
+      check_json_key(obstacles_json, "urdf_file_path");
+      std::string urdf_file_path = obstacles_json["urdf_file_path"].GetString();
+
+      std::vector<std::string> robot_joints_order;
+      check_json_key(obstacles_json, "robot_joints_order");
+      for (rapidjson::Value &joint :
+           obstacles_json["robot_joints_order"].GetArray()) {
+
+        robot_joints_order.push_back(joint.GetString());
+      }
+
+      std::vector<std::vector<float>>
+          robot_base_coordinates_raw; // TODO: remove hardcode and make dynamic
+                                      // base_coord
+      robot_base_coordinates_raw.emplace_back();
+      check_json_key(obstacles_json, "robot_base_coords");
+      check_json_key(obstacles_json, "robot_base_quat_rot");
+      for (rapidjson::Value &base_coordinate :
+           obstacles_json["robot_base_coords"].GetArray()) {
+
+        robot_base_coordinates_raw[0].push_back(base_coordinate.GetDouble());
+      }
+      for (rapidjson::Value &base_coordinate_rot :
+           obstacles_json["robot_base_quat_rot"].GetArray()) {
+
+        robot_base_coordinates_raw[0].push_back(
+            base_coordinate_rot.GetDouble());
+      }
+
+      std::vector<MDP::RobotObstacleJsonInfo::PathState> robot_trajectory;
+      check_json_key(obstacles_json, "trajectory");
+      for (rapidjson::Value &coordinate :
+           obstacles_json["trajectory"].GetArray()) {
+        check_json_key(coordinate, "time");
+        check_json_key(coordinate, "robot_angles");
+        std::vector<double> robot_angles;
+        for (rapidjson::Value &coordinate_unit : coordinate["robot_angles"].GetArray()) {
+
+          robot_angles.push_back(coordinate_unit.GetDouble());
+        }
+        double time = coordinate["time"].GetDouble();
+        robot_trajectory.emplace_back(robot_angles,time);
+
       }
       robot_obstacles.emplace_back(obstacle_name, obstacle_type, urdf_file_path,
                                    robot_joints_order, robot_trajectory,
                                    robot_base_coordinates_raw, fps, true);
-    } else if (obstacle_type == "static_sphere") {
+    }else if (obstacle_type == "static_sphere") {
       std::vector<std::vector<float>> obstacles_coords;
       obstacles_coords.push_back(std::vector<float>());
       check_json_key(obstacles_json, "positions");
@@ -240,14 +293,18 @@ json_parser(const std::string &path_to_scene_json) {
       robot_base_quat_rot[0], robot_base_quat_rot[1], robot_base_quat_rot[2],
       robot_base_quat_rot[3], 0, 0));
 
-
+  double start_time = 0;
+  if (scene_parsed_data.HasMember("start_time")){
+    start_time = scene_parsed_data["start_time"].GetDouble();
+  }
 
     scene_file.close();
+
   return MDP::ConfigReader::SceneTask(
       start_configuration, end_configuration, frame_count, fps, obstacles,
       robot_obstacles, robot_urdf_path, robot_base_coords, robot_base_quat_rot,
       robot_joints_order, robot_base_position_vector, robot_joint_max_velocity,
-      robot_capsules_radius, robot_joint_count);
+      robot_capsules_radius, robot_joint_count, start_time);
     }
     catch (const char* error_message)
     {
@@ -259,7 +316,7 @@ json_parser(const std::string &path_to_scene_json) {
 /*
 Get scene task. Returns SceneTask struct
 */
-const MDP::ConfigReader::SceneTask &MDP::ConfigReader::get_scene_task() const {
+MDP::ConfigReader::SceneTask &MDP::ConfigReader::get_scene_task() {
   return this->scene_task;
 }
 

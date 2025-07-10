@@ -9,6 +9,7 @@
 #include <CollisionManager/CubeObstacleFCL.hpp>
 #include <config_read_writer/config_read.hpp>
 #include <config_read_writer/CubeObstacleJsonInfo.hpp>
+#include <config_read_writer/RobotObstacleJsonInfo.hpp>
 #include <kdl_parser/kdl_parser.hpp>
 #include <kdl/frames_io.hpp>
 #include <kdl/treefksolverpos_recursive.hpp>
@@ -17,7 +18,7 @@
 #include <kdl/chainiksolverpos_nr.hpp>
 #include "config_read_writer/ResultsWriter.hpp"
 
-MDP::RobotObstacleFCL::RobotObstacleFCL(const std::string &urdf_path, const std::vector<MDP::ObstacleCoordinate> robot_base_position, const std::vector<std::string> _robot_joint_order, const std::vector<std::vector<double>> _trajectory) : limits(_robot_joint_order.size()), robot_joint_order(_robot_joint_order), base_position(robot_base_position), trajectory(_trajectory)
+MDP::RobotObstacleFCL::RobotObstacleFCL(const std::string &urdf_path, const std::vector<MDP::ObstacleCoordinate> robot_base_position, const std::vector<std::string> _robot_joint_order, const std::vector<MDP::RobotObstacleJsonInfo::PathState> _trajectory, const MDP::ConfigReader::SceneTask &_scene_task, const bool _is_static) : limits(_robot_joint_order.size()), robot_joint_order(_robot_joint_order), base_position(robot_base_position), trajectory(_trajectory), scene_task(_scene_task), is_static(_is_static)
 {
 
     this->load_urdf_from_file(urdf_path); // load urdf model
@@ -111,7 +112,7 @@ void MDP::RobotObstacleFCL::load_joint_collision_models(const std::string &urdf_
         if (current_link->collision->geometry->type == urdf::Geometry::MESH)
         {
             const auto mesh_ptr{dynamic_cast<const urdf::Mesh *>(current_link->collision->geometry.get())};
-
+            link_name2filepath[current_link->name] = urdf_root_path + mesh_ptr->filename;
             coal::BVHModelPtr_t bvh = loader.load(urdf_root_path + mesh_ptr->filename);
             bvh->buildConvexHull(true, "Qt");
             std::shared_ptr<coal::ConvexBase32> link_mesh = bvh->convex;
@@ -384,20 +385,165 @@ std::vector<MDP::RobotObstacleFCL::JointCollisionObject> MDP::RobotObstacleFCL::
     return result;
 }
 
-void MDP::RobotObstacleFCL::set_trajectory(const std::vector<std::vector<double>> _trajectory)
+void MDP::RobotObstacleFCL::set_trajectory(const std::vector<MDP::RobotObstacleJsonInfo::PathState> _trajectory)
 {
     this->trajectory = _trajectory;
 }
 
 std::vector<MDP::RobotObstacleFCL::JointCollisionObject> MDP::RobotObstacleFCL::get_collision_object_for_frame(const long long frame)
 {
-    assert(frame < this->trajectory.size());
+    assert(this->trajectory.size()>0);
+    assert(frame < this->scene_task.frame_count);
+    assert(frame >= 0);
 
+    double time = (double)frame/(double)this->scene_task.fps+this->scene_task.start_time;
+
+    if (trajectory.back().time<=time){
+        return this->get_collision_object_for_robot_angles(trajectory.back().configuration_coordinates);
+    }
+    for (int state_idx = 0; state_idx < this->trajectory.size() - 1; state_idx++)
+    {
+        if (this->trajectory[state_idx].time <= time +0.00001 &&
+            this->trajectory[state_idx + 1].time > time+0.00001)
+        {
+            std::vector<double> result_coord;
+            std::vector<double> left_coord = this->trajectory[state_idx].configuration_coordinates;
+            double left_time = this->trajectory[state_idx].time;
+
+            std::vector<double> right_coord = this->trajectory[state_idx+1].configuration_coordinates;
+            double right_time = this->trajectory[state_idx+1].time;
+            for (int angle_id = 0; angle_id < right_coord.size(); angle_id++)
+            {
+                double k = (right_coord[angle_id] - left_coord[angle_id]) / (right_time - left_time);
+                double b = right_coord[angle_id] - (right_coord[angle_id] - left_coord[angle_id]) / (right_time - left_time) * right_time;
+                result_coord.push_back(k * time + b);
+            }
+            return this->get_collision_object_for_robot_angles(result_coord);
+        }
+    }
+    assert(false);
     // this->robot_chain.segments[0].setFrameToTip(KDL::Frame(this->initial_base_frame.M * KDL::Rotation::Quaternion(base_position[0].quat_x, base_position[0].quat_y, base_position[0].quat_z, base_position[0].quat_w), this->initial_base_frame.p + KDL::Vector(base_position[0].pos[0], base_position[0].pos[1], base_position[0].pos[2]))); // TODO: remove [0] and check if robot is static
 
-    return this->get_collision_object_for_robot_angles(trajectory[frame]);
+    // if (this->to_frame(trajectory.back().time)<=frame){
+    //     return this->get_collision_object_for_robot_angles(trajectory.back().configuration_coordinates);
+    // }
+    //do binary search and find interval between times, where frame is located, then, linearly interpolate angles
+
+
+    // int left_bound = trajectory.size()/2;
+    // for (int interval_id=0; interval_id<trajectory.size()-1; interval_id++){
+    //     if (frame < this->to_frame(trajectory[left_bound].time)){
+    //         //move bound to the right
+    //         left_bound += (trajectory.size() - left_bound) /2;
+
+    //     }
+    //     else if (frame > this->to_frame(trajectory[left_bound+1].time)){
+    //         //move bound to the left
+    //         left_bound -= (left_bound) /2;
+
+    //     }
+    //     else{
+    //         //linearly interpolate and return
+    //         std::vector<double> result_coord;
+    //         std::vector<double> left_coord = trajectory[left_bound].configuration_coordinates;
+    //         int left_frame = this->to_frame(trajectory[left_bound].time);
+    //         std::vector<double> right_coord = trajectory[left_bound+1].configuration_coordinates;
+    //         int right_frame = this->to_frame(trajectory.[left_bound+1].time);
+    //         for(int angle_id=0;angle_id<left_coord.size();angle_id++){
+    //             double k = (right_coord[angle_id]-left_coord[angle_id])/(right_frame-left_frame);
+    //             double b = right_coord[angle_id]- (right_coord[angle_id]-left_coord[angle_id])/(right_frame-left_frame)*right_frame;
+    //             result_coord.push_back(k*frame+b);
+    //         }
+    //         return this->get_collision_object_for_robot_angles(result_coord);
+    //     }
+    // }
+
+
+    // Binary search to find interval between times where frame is located, then linearly interpolate angles
+    // int left = 0;
+    // int right = trajectory.size() - 1;
+    // int left_bound = -1;
+
+    // // Binary search for the correct interval
+    // while (left <= right) {
+    //     int mid = left + (right - left) / 2;
+    //     int mid_frame = this->to_frame(trajectory[mid].time);
+
+    //     if (mid < trajectory.size() - 1) {
+    //         int next_frame = this->to_frame(trajectory[mid + 1].time);
+    //         // Check if frame is in the interval [mid, mid+1]
+    //         if (frame >= mid_frame && frame <= next_frame) {
+    //             left_bound = mid;
+    //             break;
+    //         }
+    //         else if (frame < mid_frame) {
+    //             right = mid - 1;
+    //         }
+    //         else {
+    //             left = mid + 1;
+    //         }
+    //     }
+    //     else {
+    //         // Handle edge case where mid is the last element
+    //         if (frame >= mid_frame) {
+    //             // assert(false);
+    //             left_bound = mid - 1; // Use previous interval
+    //         }
+    //         else {
+    //             right = mid - 1;
+    //         }
+    //         break;
+    //     }
+    // }
+
+    // // Check if we found a valid interval
+    // if (left_bound >= 0 && left_bound < trajectory.size() - 1) {
+    //     // Linearly interpolate and return
+    //     std::vector<double> result_coord;
+    //     std::vector<double> left_coord = trajectory[left_bound].configuration_coordinates;
+    //     int left_frame = this->to_frame(trajectory[left_bound].time);
+    //     std::vector<double> right_coord = trajectory[left_bound + 1].configuration_coordinates;
+    //     int right_frame = this->to_frame(trajectory[left_bound + 1].time); // Fixed syntax error
+
+    //     for (int angle_id = 0; angle_id < left_coord.size(); angle_id++) {
+    //         // Linear interpolation: y = y1 + (y2-y1) * (x-x1) / (x2-x1)
+    //         double interpolated_value = left_coord[angle_id] +
+    //             (right_coord[angle_id] - left_coord[angle_id]) *
+    //             (frame - left_frame) / (right_frame - left_frame);
+    //         result_coord.push_back(interpolated_value);
+    //     }
+    //     return this->get_collision_object_for_robot_angles(result_coord);
+    // }
+
+
+    // assert(false);
+
+    // for (int state_idx = 0; state_idx < this->trajectory.size() - 1; state_idx++)
+    // {
+    //     if (to_frame(this->trajectory[state_idx].time) <= frame &&
+    //         to_frame(this->trajectory[state_idx + 1].time) >= frame)
+    //     {   
+    //         std::vector<double> result_coord;
+    //         std::vector<double> left_coord = this->trajectory[state_idx].configuration_coordinates;
+    //         int left_frame = to_frame(this->trajectory[state_idx].time);
+
+    //         std::vector<double> right_coord = this->trajectory[state_idx+1].configuration_coordinates;
+    //         int right_frame = to_frame(this->trajectory[state_idx+1].time);
+    //         for (int angle_id = 0; angle_id < right_coord.size(); angle_id++)
+    //         {
+    //             double k = (right_coord[angle_id] - left_coord[angle_id]) / (right_frame - left_frame);
+    //             double b = right_coord[angle_id] - (right_coord[angle_id] - left_coord[angle_id]) / (right_frame - left_frame) * right_frame;
+    //             result_coord.push_back(k * frame + b);
+    //         }
+    //         return this->get_collision_object_for_robot_angles(result_coord);
+    //     }
+    // }
+    // assert(false);
 }
 
+int MDP::RobotObstacleFCL::to_frame(const double& time) const{
+    return (time - this->scene_task.start_time)*this->scene_task.fps;
+}
 std::vector<std::pair<float, float>> MDP::RobotObstacleFCL::get_limits() const
 {
     return limits;
@@ -406,4 +552,30 @@ std::vector<std::pair<float, float>> MDP::RobotObstacleFCL::get_limits() const
 std::vector<std::shared_ptr<coal::ShapeBase>> MDP::RobotObstacleFCL::get_geometric_shapes()
 {
     return collision_objects;
+}
+
+std::string MDP::RobotObstacleFCL::get_urdf_path() const
+{
+    return this->urdf_path;
+}
+
+const std::vector<MDP::ObstacleCoordinate>& MDP::RobotObstacleFCL::get_base_position() const
+{
+    return this->base_position;
+}
+
+const std::vector<MDP::RobotObstacleJsonInfo::PathState>& MDP::RobotObstacleFCL::get_trajectory() const
+{
+    return this->trajectory;
+}
+
+bool MDP::RobotObstacleFCL::get_is_static() const
+{
+    return this->is_static;
+}
+
+std::string MDP::RobotObstacleFCL::get_filepath_for_link_name(const std::string& link_name) const
+{
+    assert(this->link_name2filepath.find(link_name)!=this->link_name2filepath.end());
+    return this->link_name2filepath.find(link_name)->second;
 }

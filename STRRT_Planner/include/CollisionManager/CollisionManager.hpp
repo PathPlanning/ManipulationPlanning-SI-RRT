@@ -108,6 +108,12 @@ namespace MDP
 
         void benchmark_broadphase();
 
+        std::vector<MDP::RobotObstacleFCL> get_robot_obstacles() const;
+        std::vector<MDP::ObjectObstacleFCL *> get_obstacles() const;
+
+        MDP::ConfigReader::SceneTask get_scene_task() const;
+
+        MDP::RobotObstacleFCL get_planned_robot() const;
     private:
         bool check_collision_private(const std::vector<double>& robot_angles, int& frame);
         std::vector<std::pair<int, int>>  get_safe_intervals_private(const std::vector<double>& robot_angles);

@@ -36,5 +36,17 @@ build_planner_debug:
 	
 	cd ..
 
+build_planner_release:
+	cd ./STRRT_Planner
+	make build_release
+
+	cd ../MSIRRT
+	make build_release
+
+	cd ../RPMPLv2
+	make build
+
+	cd ..
+
 mass_tests:
 	python3 ./mass_test/do_mass_test.py

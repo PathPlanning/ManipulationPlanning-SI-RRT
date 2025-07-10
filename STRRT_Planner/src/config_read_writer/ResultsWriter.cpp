@@ -152,7 +152,7 @@ namespace
         return randomString;
     }
 }
-void MDP::ResultsWriter::add_results(std::vector<MDP::ResultsWriter::PathState> path, double cost, rapidjson::Value &&planner_metadata)
+void MDP::ResultsWriter::add_results(std::vector<MDP::RobotObstacleJsonInfo::PathState> path, double cost, rapidjson::Value &&planner_metadata)
 {
     assert(this->algorithm_solving_time.get_is_running());
     this->results_path_cost_metadata.emplace_back(PlannerResults(path, cost, std::move(planner_metadata), this->algorithm_solving_time.get_elapsed_time_ns()));
@@ -168,10 +168,10 @@ rapidjson::Document::AllocatorType &MDP::ResultsWriter::get_json_allocator()
     return this->allocator;
 }
 
-rapidjson::Value &MDP::ResultsWriter::convert_path_to_json(const std::vector<PathState> &path, rapidjson::Value &path_array)
+rapidjson::Value &MDP::ResultsWriter::convert_path_to_json(const std::vector<MDP::RobotObstacleJsonInfo::PathState> &path, rapidjson::Value &path_array)
 {
     path_array.SetArray();
-    for (const PathState &state : path)
+    for (const MDP::RobotObstacleJsonInfo::PathState &state : path)
     {
         rapidjson::Value point_array(rapidjson::kArrayType);
         for (double v : state.configuration_coordinates)

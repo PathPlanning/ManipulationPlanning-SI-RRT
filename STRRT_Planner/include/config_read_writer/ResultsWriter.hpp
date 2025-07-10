@@ -59,22 +59,17 @@ namespace MDP
             std::string name;
         };
 
-        struct PathState
-        {
-            const std::vector<double> configuration_coordinates;
-            const double time;
-            PathState(const std::vector<double> _configuration_coordinates, const double _time) : configuration_coordinates(_configuration_coordinates), time(_time) {};
-        };
+    
 
         struct PlannerResults
         {
-            const std::vector<PathState> path; // planned path
+            const std::vector<MDP::RobotObstacleJsonInfo::PathState> path; // planned path
             const double cost;                 // cost of the path
             rapidjson::Value planner_metadata; // metadata of planner to add to JSON (tree, node count, etc.)
             // NOTE!!! rapidjson::Value does not have a copy constructor, only move constructor!!!
             const uint64_t timestamp_ns;                                                                                                                                                                                                                                     // timestamp of obtaining results, timer startsright before the planner->solve() call
                                                                                                                                                                                                                                                                              // in other word, it is the time from planner->solve() call till getting path result.
-            PlannerResults(const std::vector<PathState> _path, const double _cost, rapidjson::Value &&_planner_metadata, const unsigned long long _timestamp_ns) : path(_path), cost(_cost), planner_metadata(std::move(_planner_metadata)), timestamp_ns(_timestamp_ns) {}; // TODO^ probably don't need std move here...
+            PlannerResults(const std::vector<MDP::RobotObstacleJsonInfo::PathState> _path, const double _cost, rapidjson::Value &&_planner_metadata, const unsigned long long _timestamp_ns) : path(_path), cost(_cost), planner_metadata(std::move(_planner_metadata)), timestamp_ns(_timestamp_ns) {}; // TODO^ probably don't need std move here...
             PlannerResults(const PlannerResults &other) = delete;                                                                                                                                                                                                            // copy constructor
             PlannerResults(PlannerResults &&other) = default;                                                                                                                                                                                                                // move constructor
             PlannerResults &operator=(const PlannerResults &other) = delete;                                                                                                                                                                                                 // copy assignment
@@ -121,16 +116,16 @@ namespace MDP
         void save_json(const std::string file_name, rapidjson::Value &additional_final_planner_metadata, int random_seed);
 
         // add intermediate or final path planning result.
-        // path - vector of MDP::ResultsWriter::PathState
+        // path - vector of MDP::RobotObstacleJsonInfo::PathState
         // double cost - path cost (if planner is optimal)
 
         // NOTE!!! rapidjson::Value does not have copy constructor, only move constructor!!!
-        void add_results(std::vector<MDP::ResultsWriter::PathState> path, double cost, rapidjson::Value &&planner_metadata);
+        void add_results(std::vector<MDP::RobotObstacleJsonInfo::PathState> path, double cost, rapidjson::Value &&planner_metadata);
 
         uint64_t get_collision_check_count() const;
         rapidjson::Document::AllocatorType &get_json_allocator();
 
-        rapidjson::Value &convert_path_to_json(const std::vector<PathState> &path, rapidjson::Value &path_json);
+        rapidjson::Value &convert_path_to_json(const std::vector<MDP::RobotObstacleJsonInfo::PathState> &path, rapidjson::Value &path_json);
 
         void save_error_json(const std::string &error_msg);
 

@@ -4,10 +4,10 @@
 #include <cassert>
 
 MDP::RobotObstacleJsonInfo::RobotObstacleJsonInfo(const std::string &_name, const std::string &_type, const std::string &_urdf_file_path,
-                                                  const std::vector<std::string> &_robot_joints_order, const std::vector<std::vector<double>> &_trajectory,
-                                                  std::vector<std::vector<float>> &base_coordinates_raw,
+                                                  const std::vector<std::string> &_robot_joints_order, const std::vector<MDP::RobotObstacleJsonInfo::PathState> &_trajectory,
+                                                  const std::vector<std::vector<float>> &base_coordinates_raw,
                                                   const float &fps,
-                                                  const bool &_is_static) : name(_name),
+                                                  bool _is_static) : name(_name),
                                                                             type(_type),
                                                                             urdf_file_path(_urdf_file_path),
                                                                             robot_joints_order(_robot_joints_order),
@@ -29,7 +29,8 @@ MDP::RobotObstacleJsonInfo::RobotObstacleJsonInfo(const std::string &_name, cons
     }
     else
     {
-        assert(false); //, "dynamic robot base is not implemented"
+        // assert(false); //, "dynamic robot base is not implemented"
+        //
         for (unsigned long long frame_id = 0; frame_id < base_coordinates_raw.size(); frame_id++)
         {
             assert(base_coordinates_raw[0].size() == 7);
@@ -46,7 +47,7 @@ MDP::RobotObstacleJsonInfo::RobotObstacleJsonInfo(const std::string &_name, cons
     }
 };
 
-std::vector<std::vector<double>> MDP::RobotObstacleJsonInfo::get_trajectory() const
+std::vector<MDP::RobotObstacleJsonInfo::PathState> MDP::RobotObstacleJsonInfo::get_trajectory() const
 {
     return this->trajectory;
 }

@@ -11,6 +11,8 @@
 #include "config_read_writer/config_read.hpp"
 #include "config_read_writer/STRRTConfigReader.hpp"
 #include "config_read_writer/ResultsWriter.hpp"
+#include "config_read_writer/RobotObstacleJsonInfo.hpp"
+#include "config_read_writer/ObstaclePosWriter.hpp"
 #include "CollisionManager/CollisionManager.hpp"
 #include "PlannerConnect.hpp"
 
@@ -51,6 +53,8 @@ int main(int argc, char **argv)
     std::srand(random_seed);
 
     MDP::STRRTConfigReader STRRTConfigReader(path_to_strrt_config_json);
+    MDP::ObstaclePosWriter obs_pos_writer(SceneTask.get_scene_task());
+    obs_pos_writer.save_json(path_to_result_folder,path_to_scene_json.substr(path_to_scene_json.find_last_of("/\\") + 1),random_seed);
 
     // TODO: optimise collision manager construction and dont construct in space validity checker, or find another way to get joint limits
     std::shared_ptr<MDP::CollisionManager> collision_manager = std::make_shared<MDP::CollisionManager>(SceneTask.get_scene_task());
@@ -72,7 +76,7 @@ int main(int argc, char **argv)
         std::vector<MDP::MSIRRT::Vertex *> path = plannerConnect.get_final_path();
         assert(plannerConnect.check_path(path));
 
-        std::vector<MDP::ResultsWriter::PathState> result_path;
+        std::vector<MDP::RobotObstacleJsonInfo::PathState> result_path;
         MDP::MSIRRT::Vertex *previous_state = nullptr;
         for (MDP::MSIRRT::Vertex *state : path)
         {
@@ -87,7 +91,7 @@ int main(int argc, char **argv)
                         {
                             point[x] = previous_state->coords[x];
                         }
-                        result_path.emplace_back(point, ((double)state->departure_from_parent_time) / (double)SceneTask.get_scene_task().fps);
+                        result_path.emplace_back(point, ((double)state->departure_from_parent_time) / (double)SceneTask.get_scene_task().fps+SceneTask.get_scene_task().start_time);
                     }
                 }
             }
@@ -97,7 +101,7 @@ int main(int argc, char **argv)
             {
                 point[x] = state->coords[x];
             }
-            result_path.emplace_back(point, ((double)state->arrival_time) / (double)SceneTask.get_scene_task().fps);
+            result_path.emplace_back(point, ((double)state->arrival_time) / (double)SceneTask.get_scene_task().fps +SceneTask.get_scene_task().start_time);
 
             previous_state = state;
         }

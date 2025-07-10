@@ -29,7 +29,7 @@ def get_path_from_file(path_file:str)->list[tuple[float,list]]:
         for line in f:
             path_str, time_str = line.split(';')
             time = float(time_str)
-            q = list2 = [float(x) for x in path_str[1:-1].split() if x]
+            q = [float(x) for x in path_str[1:-1].split() if x]
             path_time.append((time,q))
     return path_time
 
@@ -94,13 +94,15 @@ def open_json(json_path:str)->dict:
 
 def animate_trajectory(manipulator_path,joint_order,robot_name):
 
-    for  c,state in enumerate(manipulator_path):
-        move_robot(robot_name,state,frame = c, joint_order = joint_order)
+    for  state in manipulator_path:
+        move_robot(robot_name,state["robot_angles"],frame = state["time"]*30, joint_order = joint_order)
 
 def create_robot(robot_json_data:Dict)->None:
     """
     Create robot at blender scene with its json description 
     """
+    if "name" not in robot_json_data:
+        return
     
     bpy.ops.import_robot.urdf_filebrowser(filepath=robot_json_data['robot_urdf'])
     

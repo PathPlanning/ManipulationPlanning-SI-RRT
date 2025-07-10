@@ -28,6 +28,6 @@ find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../../rapidjson/)
 
-add_library(config_read_writer STATIC "./config_read.cpp" "./ObstacleJsonInfo.cpp" "./CubeObstacleJsonInfo.cpp" "./SphereObstacleJsonInfo.cpp" "./RobotObstacleJsonInfo.cpp" "./STRRTConfigReader.cpp" "./ResultsWriter.cpp")
+add_library(config_read_writer STATIC "./config_read.cpp" "./ObstacleJsonInfo.cpp" "./CubeObstacleJsonInfo.cpp" "./SphereObstacleJsonInfo.cpp" "./RobotObstacleJsonInfo.cpp" "./STRRTConfigReader.cpp" "./ResultsWriter.cpp" "./ObstaclePosWriter.cpp")
 target_link_libraries(config_read_writer  PUBLIC RapidJSON Eigen3::Eigen)  
 target_include_directories(config_read_writer PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include )

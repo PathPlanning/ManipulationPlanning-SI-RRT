@@ -24,6 +24,7 @@
 #include "config_read_writer/config_read.hpp"
 #include "config_read_writer/STRRTConfigReader.hpp"
 #include "config_read_writer/ResultsWriter.hpp"
+#include "config_read_writer/RobotObstacleJsonInfo.hpp"
 
 #include <OMPLValidators/SpaceTimeMotionValidator.hpp>
 #include <OMPLValidators/StateValidityCheckerFunctor.hpp>
@@ -71,14 +72,14 @@ void StrrtWritePlannerData(const ob::Planner *planner, rapidjson::Value &json_ob
         // not implemented
     }
 }
-void StrrtReportIntermediateSolution(const ob::Planner *planner, const std::vector<const ob::State *> &path, const ob::Cost cost, ob::PlannerTerminationCondition& ptc_exact)
+void StrrtReportIntermediateSolution(const ob::Planner *planner, const std::vector<const ob::State *> &path, const ob::Cost cost, ob::PlannerTerminationCondition& ptc_exact, const double& start_time)
 {
     ptc_exact.terminate();
-    std::vector<MDP::ResultsWriter::PathState> result_path;
+    std::vector<MDP::RobotObstacleJsonInfo::PathState> result_path;
     int robot_joint_counts = planner->getSpaceInformation()->getStateSpace()->as<ob::SpaceTimeStateSpace>()->getSpaceComponent()->getDimension();
     for (const ob::State *state : path)
     {
-        double point_time = state->as<ob::CompoundState>()->as<ob::TimeStateSpace::StateType>(1)->position;
+        double point_time = state->as<ob::CompoundState>()->as<ob::TimeStateSpace::StateType>(1)->position+start_time;
         std::vector<double> point(robot_joint_counts);
         for (int x = 0; x < robot_joint_counts; ++x)
         {
@@ -206,7 +207,7 @@ int main(int argc, char **argv)
     pdef->setStartAndGoalStates(start, goal);
 
     ob::PlannerTerminationCondition ptc_exact = ob::exactSolnPlannerTerminationCondition(pdef);
-    pdef->setIntermediateSolutionCallback([&ptc_exact](const ob::Planner *planner, const std::vector<const ob::State *> &path, const ob::Cost cost) -> void{StrrtReportIntermediateSolution(planner,path,cost,ptc_exact);});
+    pdef->setIntermediateSolutionCallback([&ptc_exact,&SceneTask](const ob::Planner *planner, const std::vector<const ob::State *> &path, const ob::Cost cost) -> void{StrrtReportIntermediateSolution(planner,path,cost,ptc_exact,SceneTask.get_scene_task().start_time);});
     std::shared_ptr<og::STRRTstar> planner = std::make_shared<og::STRRTstar>(si);
 
     planner->setProblemDefinition(pdef);
@@ -250,10 +251,10 @@ int main(int argc, char **argv)
     if (plan_result)
     {
         og::PathGeometric* path = pdef->getSolutionPath()->as<og::PathGeometric>();  
-        std::vector<MDP::ResultsWriter::PathState> result_path;
+        std::vector<MDP::RobotObstacleJsonInfo::PathState> result_path;
         for (const ob::State *state : path->getStates())
         {
-            double point_time = state->as<ob::CompoundState>()->as<ob::TimeStateSpace::StateType>(1)->position;
+            double point_time = state->as<ob::CompoundState>()->as<ob::TimeStateSpace::StateType>(1)->position + SceneTask.get_scene_task().start_time;
             std::vector<double> point(SceneTask.get_scene_task().robot_joint_count);
             for (int x = 0; x < SceneTask.get_scene_task().robot_joint_count; ++x)
             {

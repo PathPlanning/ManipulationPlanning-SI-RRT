@@ -62,24 +62,30 @@ namespace MDP
         RobotObstacleFCL(const std::string &urdf_path,
                          const std::vector<MDP::ObstacleCoordinate> robot_base_position,
                          const std::vector<std::string> _robot_joints_order,
-                         const std::vector<std::vector<double>> _trajectory); // constructor
+                         const std::vector<MDP::RobotObstacleJsonInfo::PathState> _trajectory,
+                         const MDP::ConfigReader::SceneTask &_scene_task,
+                         const bool _is_static); // constructor
         ~RobotObstacleFCL();                                                  // destructor
         RobotObstacleFCL(const RobotObstacleFCL &other) = default;            // copy constructor
         RobotObstacleFCL(RobotObstacleFCL &&other) = default;                 // move constructor
         RobotObstacleFCL &operator=(const RobotObstacleFCL &other) = default; // copy assignment
         RobotObstacleFCL &operator=(RobotObstacleFCL &&other) = default;      // move assignment
 
-        // void set_position(const unsigned int frame);
-        // void set_position(const MDP::ObstacleCoordinate position);
-        // coal::Box& get_collision_object() const;
         std::vector<MDP::RobotObstacleFCL::JointCollisionObject> get_collision_object_for_robot_angles(const std::vector<double> angles);
         std::vector<MDP::RobotObstacleFCL::JointCollisionObject> get_collision_object_for_frame(const long long frame);
 
         std::vector<std::shared_ptr<coal::ShapeBase>> get_geometric_shapes();
         coal::Transform3s &get_transform() const;
 
-        void set_trajectory(const std::vector<std::vector<double>> _trajectory);
+        void set_trajectory(const std::vector<MDP::RobotObstacleJsonInfo::PathState> _trajectory);
         std::vector<std::pair<float, float>> get_limits() const;
+        
+        std::string get_urdf_path() const;
+        const std::vector<MDP::ObstacleCoordinate>& get_base_position() const;
+        const std::vector<MDP::RobotObstacleJsonInfo::PathState>& get_trajectory() const;
+        bool get_is_static() const;
+
+        std::string get_filepath_for_link_name(const std::string& link_name) const;
 
     private:
         std::vector<ForwardKinematicChain> fk_chain;
@@ -92,7 +98,7 @@ namespace MDP
         urdf::Model model{};
         const std::vector<std::string> robot_joint_order;
         std::vector<MDP::ObstacleCoordinate> base_position;
-        std::vector<std::vector<double>> trajectory;
+        std::vector<MDP::RobotObstacleJsonInfo::PathState> trajectory;
         std::vector<std::pair<float, float>> limits;
 
         void load_kdl_tree(const std::string &urdf_path);
@@ -104,10 +110,14 @@ namespace MDP
         std::map<std::string, coal::Transform3s> link2transform;
         std::map<std::string, int> joint_name2ind;
         std::map<std::string, std::pair<float, float>> joint_name2limits;
+        std::map<std::string, std::string> link_name2filepath;
         std::vector<std::shared_ptr<coal::ShapeBase>> collision_objects;
         std::string tip_link_name;
         unsigned int degrees_of_freedom;
         KDL::Tree robot_tree;
         KDL::Chain robot_chain;
+        MDP::ConfigReader::SceneTask scene_task;
+        bool is_static;
+        int to_frame(const double& time) const;
     };
 }

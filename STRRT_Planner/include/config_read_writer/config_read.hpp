@@ -42,6 +42,7 @@ public:
     std::vector<double> robot_joint_max_velocity;
     std::vector<double> robot_capsules_radius;
     int robot_joint_count;
+    double start_time;
     std::vector<MDP::ObstacleCoordinate> robot_base_position_vector;
     SceneTask(std::vector<double> _start_configuration,
               std::vector<double> _end_configuration, unsigned int _frame_count,
@@ -55,7 +56,8 @@ public:
               std::vector<MDP::ObstacleCoordinate> _robot_base_position_vector,
               std::vector<double> _robot_joint_max_velocity,
               std::vector<double> _robot_capsules_radius,
-              int _robot_joint_count)
+              int _robot_joint_count,
+              double _start_time)
         : robot_base_position_vector(_robot_base_position_vector),
           start_configuration(_start_configuration),
           end_configuration(_end_configuration), frame_count(_frame_count),
@@ -66,7 +68,8 @@ public:
           robot_joints_order(_robot_joints_order),
           robot_joint_count(_robot_joint_count),
           robot_capsules_radius(_robot_capsules_radius),
-          robot_joint_max_velocity(_robot_joint_max_velocity){};
+          robot_joint_max_velocity(_robot_joint_max_velocity),
+          start_time(_start_time){};
 
     ~SceneTask() = default;                                 // destructor
     SceneTask(const SceneTask &other) = default;            // copy constructor
@@ -75,7 +78,7 @@ public:
     SceneTask &operator=(SceneTask &&other) = default;      // move assignment
   };
 
-  const SceneTask &get_scene_task() const;
+  SceneTask &get_scene_task();
 
 private:
   ConfigReader(const ConfigReader &other) = delete; // copy constructor
@@ -83,7 +86,7 @@ private:
   ConfigReader &
   operator=(const ConfigReader &other) = delete;          // copy assignment
   ConfigReader &operator=(ConfigReader &&other) = delete; // move assignment
-  const SceneTask scene_task;
+  SceneTask scene_task;
 };
 
 } // namespace MDP
