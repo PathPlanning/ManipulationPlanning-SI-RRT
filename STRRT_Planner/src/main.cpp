@@ -263,7 +263,7 @@ int main(int argc, char **argv)
             result_path.emplace_back(point, point_time);
         }
         rapidjson::Value path_json;
-        double path_cost = result_path.back().time;
+        double path_cost = result_path.back().time-SceneTask.get_scene_task().start_time;
         MDP::ResultsWriter::get_instance().convert_path_to_json(result_path,path_json);
         path_result.AddMember("final_path", path_json, MDP::ResultsWriter::get_instance().get_json_allocator());
         path_result.AddMember("path_cost", path_cost, MDP::ResultsWriter::get_instance().get_json_allocator());
