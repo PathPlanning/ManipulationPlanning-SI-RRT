@@ -53,8 +53,8 @@ int main(int argc, char **argv)
     std::srand(random_seed);
 
     MDP::STRRTConfigReader STRRTConfigReader(path_to_strrt_config_json);
-    MDP::ObstaclePosWriter obs_pos_writer(SceneTask.get_scene_task());
-    obs_pos_writer.save_json(path_to_result_folder,path_to_scene_json.substr(path_to_scene_json.find_last_of("/\\") + 1),random_seed);
+    // MDP::ObstaclePosWriter obs_pos_writer(SceneTask.get_scene_task());
+    // obs_pos_writer.save_json(path_to_result_folder,path_to_scene_json.substr(path_to_scene_json.find_last_of("/\\") + 1),random_seed);
 
     // TODO: optimise collision manager construction and dont construct in space validity checker, or find another way to get joint limits
     std::shared_ptr<MDP::CollisionManager> collision_manager = std::make_shared<MDP::CollisionManager>(SceneTask.get_scene_task());
@@ -70,6 +70,8 @@ int main(int argc, char **argv)
     rapidjson::Value path_result;
     path_result.SetObject();
     path_result.AddMember("has_result", result, MDP::ResultsWriter::get_instance().get_json_allocator());
+    path_result.AddMember("start_tree_vertices", plannerConnect.get_start_tree_vertices_count(), MDP::ResultsWriter::get_instance().get_json_allocator());
+    path_result.AddMember("goal_tree_vertices", plannerConnect.get_goal_tree_vertices_count(), MDP::ResultsWriter::get_instance().get_json_allocator());
 
     if (result)
     {

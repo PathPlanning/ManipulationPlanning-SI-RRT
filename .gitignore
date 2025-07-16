@@ -33,6 +33,7 @@
 
 .vscode/
 build/
+build*/
 
 *_planner_logs_*
 drgbt_test.log
@@ -44,3 +45,5 @@ tests/
 multiagent_tests*/
 
 position_logs_*
+
+FlameGraph/

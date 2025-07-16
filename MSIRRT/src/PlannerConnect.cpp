@@ -60,12 +60,12 @@ MDP::MSIRRT::PlannerConnect::PlannerConnect(MDP::ConfigReader::SceneTask scene_t
     
     // сheck if the latest safe interval at goal is safe
     // assert(this->goal_safe_intervals.back().second == scene_task.frame_count - 1);
-    this->current_tree = this->goal_tree;
-    this->other_tree = this->start_tree;
+    this->current_tree = this->start_tree;
+    this->other_tree = this->goal_tree;
     this->goal_reached = false;
     this->max_planning_time = 20;      // TODO: remove hardcode
     this->stop_when_path_found = true; // TODO: remove hardcode
-    this->planner_range = 1;           // TODO: remove hardcode
+    this->planner_range = 3;           // TODO: remove hardcode
     this->vmax = 3.1415;               // TODO: remove hardcode
 }
 // destructor
@@ -78,8 +78,14 @@ MDP::MSIRRT::PlannerConnect::~PlannerConnect()
 
 bool MDP::MSIRRT::PlannerConnect::solve()
 {
+    
     this->solver_start_time = std::chrono::steady_clock::now();
     int iter = 0;
+    
+    if(this->root_node->safe_interval.second < scene_task.frame_count/5){
+        this->warmup_start_tree();
+    }
+
     while (this->check_planner_termination_condition() && !this->goal_reached)
     {
         // std::cout << "iteration #" << iter++ << std::endl;
@@ -100,8 +106,14 @@ bool MDP::MSIRRT::PlannerConnect::solve()
 
         std::vector<MDP::MSIRRT::Vertex *> new_nodes = this->grow_tree(coord_rand, safe_intervals_of_coord_rand);
 
-        if (new_nodes.size() == 0)
+        if (new_nodes.size() == 0 && this->was_static_obstacle)
         {
+            coord_rand = this->last_valid_coord;
+            safe_intervals_of_coord_rand = this->collision_manager.get_safe_intervals(std::vector<double>(coord_rand.data(), coord_rand.data() + coord_rand.rows() * coord_rand.cols()));
+            new_nodes = this->grow_tree(coord_rand, safe_intervals_of_coord_rand);
+        }   
+        // assert(this->was_static_obstacle);
+        if(new_nodes.size() == 0){
             this->swap_trees();
             continue;
         }
@@ -110,6 +122,47 @@ bool MDP::MSIRRT::PlannerConnect::solve()
     }
     return this->goal_reached;
 }
+
+void MDP::MSIRRT::PlannerConnect::warmup_start_tree()
+{
+    // std::cout<<"warmup_start_tree"<<std::endl;
+    this->current_tree = this->start_tree;
+    this->other_tree = this->goal_tree;
+    double old_planner_range = this->planner_range;
+    this->planner_range = 1.5*this->root_node->safe_interval.second/this->scene_task.fps * this->vmax;
+    for(int i = 0; i < 25; i++){
+        MDP::MSIRRT::Vertex::VertexCoordType coord_rand;
+        coord_rand = get_random_configuration();
+
+        bool is_ok = this->extend(coord_rand);
+        if (!is_ok)
+        {
+            continue;
+        }
+
+        std::vector<double> robot_angles(coord_rand.data(), coord_rand.data() + coord_rand.rows() * coord_rand.cols());
+
+        std::vector<std::pair<int, int>> safe_intervals_of_coord_rand;
+
+        safe_intervals_of_coord_rand = this->collision_manager.get_safe_intervals(robot_angles);
+
+        std::vector<MDP::MSIRRT::Vertex *> new_nodes = this->grow_tree(coord_rand, safe_intervals_of_coord_rand);
+
+        if (new_nodes.size() == 0 && this->was_static_obstacle)
+        {
+            coord_rand = this->last_valid_coord;
+            safe_intervals_of_coord_rand = this->collision_manager.get_safe_intervals(std::vector<double>(coord_rand.data(), coord_rand.data() + coord_rand.rows() * coord_rand.cols()));
+            new_nodes = this->grow_tree(coord_rand, safe_intervals_of_coord_rand);
+        }   
+        // if (new_nodes.size() != 0){
+        //     std::cout<<"warmup_start_tree: new_nodes.size() != 0"<<std::endl;
+        // }
+    }
+
+    this->planner_range = old_planner_range;
+}
+
+
 void MDP::MSIRRT::PlannerConnect::swap_trees()
 {
     std::swap(this->current_tree, this->other_tree);
@@ -119,8 +172,8 @@ bool MDP::MSIRRT::PlannerConnect::connect_trees(MDP::MSIRRT::Vertex::VertexCoord
 {
     const MDP::MSIRRT::Vertex::VertexCoordType original_coord_rand = coord_rand;
 
-    while (true)
-    {
+    while (this->check_planner_termination_condition())
+    { 
         coord_rand = original_coord_rand;
         this->swap_trees();
         bool is_ok = this->extend(coord_rand);
@@ -135,8 +188,17 @@ bool MDP::MSIRRT::PlannerConnect::connect_trees(MDP::MSIRRT::Vertex::VertexCoord
         std::vector<std::pair<int, int>> safe_intervals_of_coord_rand;
 
         safe_intervals_of_coord_rand = this->collision_manager.get_safe_intervals(robot_angles);
-        this->swap_trees();
+        this->swap_trees(); 
         std::vector<MDP::MSIRRT::Vertex *> new_nodes = this->grow_tree(coord_rand, safe_intervals_of_coord_rand);
+        if (new_nodes.size() == 0 && this->was_static_obstacle)
+        {
+            coord_rand = this->last_valid_coord;
+            safe_intervals_of_coord_rand = this->collision_manager.get_safe_intervals(std::vector<double>(coord_rand.data(), coord_rand.data() + coord_rand.rows() * coord_rand.cols()));
+            new_nodes = this->grow_tree(coord_rand, safe_intervals_of_coord_rand);
+            // assert(this->was_static_obstacle);
+            break; // because we hit static obstacle
+
+        }   
         this->swap_trees();
         if (new_nodes.size() == 0)
         {
@@ -200,15 +262,15 @@ std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::grow_tree(MDP::M
     if (array_of_new_nodes.size() == 0)
     {
         // std::cout << "no_new_node" << std::endl;
-        return result;
+        return array_of_new_nodes;
     }
-    result.reserve(result.size() + std::distance(array_of_new_nodes.begin(), array_of_new_nodes.end()));
-    result.insert(result.end(), array_of_new_nodes.begin(), array_of_new_nodes.end());
+    // result.reserve(result.size() + std::distance(array_of_new_nodes.begin(), array_of_new_nodes.end()));
+    // result.insert(result.end(), array_of_new_nodes.begin(), array_of_new_nodes.end());
 
     // std::cout << "find_new_node!" << std::endl;
     // std::cout << "tree size:" << this->start_tree->array_of_vertices.size() << " " << this->goal_tree->array_of_vertices.size() << "  " << this->orphan_tree->array_of_vertices.size() << std::endl;
 
-    return result;
+    return array_of_new_nodes;
 }
 
 std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::get_final_path() const
@@ -325,25 +387,51 @@ std::vector<std::pair<MDP::MSIRRT::Vertex *, int>> MDP::MSIRRT::PlannerConnect::
 
 std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::set_parent(MDP::MSIRRT::Vertex::VertexCoordType &coord_rand, std::vector<std::pair<int, int>> &safe_intervals_of_coord_rand)
 {
-    std::vector<std::pair<MDP::MSIRRT::Vertex *, int>> nearest_nodes = this->get_nearest_node_by_radius(coord_rand, 9 * this->planner_range * this->planner_range, (this->current_tree));
+    this->was_static_obstacle = false;
+    std::vector<std::pair<MDP::MSIRRT::Vertex *, int>> nearest_nodes = this->get_nearest_node_by_radius(coord_rand,12* this->planner_range * this->planner_range, (this->current_tree));
 
     std::vector<MDP::MSIRRT::Vertex *> added_vertices;
-    int safe_interval_ind = 0;
+    // int safe_interval_ind = 0;
+    
+    
     if (this->current_tree == this->start_tree)
-    {
+    {   
+        // int max_dep_time_for_safe_int_check = 3;
+        // int col_coord_safe_int_second = -1;
+        // int col_coord_safe_int_first = -max_dep_time_for_safe_int_check-1;
+        // std::cout<<"set_parent start_tree"<<std::endl;
         double time_to_goal = (coord_rand - this->goal_coords).norm() * (double)this->scene_task.fps / this->vmax;
-        std::sort(nearest_nodes.begin(), nearest_nodes.end(), [](const std::pair<MDP::MSIRRT::Vertex *, int> &a, std::pair<MDP::MSIRRT::Vertex *, int> &b)
-                  { return a.first->arrival_time < b.first->arrival_time; });
+        // for (const std::pair<MDP::MSIRRT::Vertex *, int> &node : nearest_nodes){
+        //     if (!node.first){
+        //         std::cout<<"null pointer in sort!"<<std::endl;
+        //         assert(false);
+        //     }
+        // }
+        std::sort(nearest_nodes.begin(), nearest_nodes.end(), [&coord_rand,this](const std::pair<MDP::MSIRRT::Vertex *, int> &a, std::pair<MDP::MSIRRT::Vertex *, int> &b)
+                  { 
+                    // Add null pointer checks to prevent segfault
+                    if (!a.first || !b.first) {
+                        std::cout<<"null pointer in sort!"<<std::endl;
+
+                        
+                        return a.first != nullptr; // null pointers go to the end
+                    }
+                    return a.first->arrival_time+((coord_rand - a.first->coords).norm() * (double)this->scene_task.fps / this->vmax) < b.first->arrival_time+((coord_rand - b.first->coords).norm() * (double)this->scene_task.fps / this->vmax); 
+                  });
+                  // std::sort(nearest_nodes.begin(), nearest_nodes.end(), [](const std::pair<MDP::MSIRRT::Vertex *, int> &a, std::pair<MDP::MSIRRT::Vertex *, int> &b)
+        //           { return a.first->arrival_time < b.first->arrival_time; });
+
         // for (std::pair<MDP::MSIRRT::Vertex *, int> candidate_node : nearest_nodes){
         //     std::cout<<candidate_node.first->arrival_time<<", ";
         // }
         // std::cout<<std::endl;
         for (std::pair<int, int> safe_int : safe_intervals_of_coord_rand) // For each interval
         {
+            // std::cout<<"safe_int: "<<safe_int.first<<" "<<safe_int.second<<std::endl;
             // if we can't reach goal from that interval - skip
             if ((safe_int.first + time_to_goal) >= this->scene_task.frame_count)
             {
-                safe_interval_ind++;
+                // safe_interval_ind++;
                 continue;
             }
             bool found_parent = false;
@@ -351,10 +439,13 @@ std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::set_parent(MDP::
             // for each parent
             for (std::pair<MDP::MSIRRT::Vertex *, int> candidate_node : nearest_nodes)
             {
+                // std::cout<<"candidate_node: "<<candidate_node.first->arrival_time<<" "<<candidate_node.first->safe_interval.first<<" "<<candidate_node.first->safe_interval.second<<std::endl;
 
                 double time_to_node = (coord_rand - candidate_node.first->coords).norm() * (double)this->scene_task.fps / this->vmax;
-
-                // candidate nodes are sorted by ascending arrival time. If arrival time > safe int bound + time to node - > break;
+                if (time_to_node<1){ // too close
+                    continue;
+                }
+                // candidate nodes are sorted by ascending arrival time. If arrival time > safe int bound + time to node -> break;
                 if (candidate_node.first->arrival_time + time_to_node > safe_int.second)
                 {
                     break;
@@ -372,64 +463,183 @@ std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::set_parent(MDP::
                 // for each departure time
                 for (double departure_time = std::max(candidate_node.first->arrival_time, (double)safe_int.first - time_to_node); departure_time <= std::min((double)candidate_node.first->safe_interval.second, (double)safe_int.second - time_to_node); departure_time += 1)
                 {
+                    // std::cout<<"departure_time: "<<departure_time<<std::endl;
                     // assert(!is_collision_motion(candidate_node.first->coords, candidate_node.first->coords, candidate_node.first->arrival_time, departure_time));
                     double arrival_time = departure_time + time_to_node;
                     // fix rounding errors
-                    if (arrival_time > safe_intervals_of_coord_rand[safe_interval_ind].second)
+                    if (arrival_time > safe_int.second)
                     {
                         //TODO: Check, if this breaks everything
-                        departure_time -= arrival_time - safe_intervals_of_coord_rand[safe_interval_ind].second;
+                        departure_time -= arrival_time - safe_int.second;
                         if(departure_time <candidate_node.first->arrival_time){
                             continue;
                         }
-                        arrival_time =  safe_intervals_of_coord_rand[safe_interval_ind].second;
+                        arrival_time =  safe_int.second;
+                        assert(arrival_time <= safe_int.second);
                     }
-                    if (arrival_time < safe_intervals_of_coord_rand[safe_interval_ind].first)
-                    {
-                        // departure_time += safe_intervals_of_coord_rand[safe_interval_ind].first - arrival_time;
-                        arrival_time = safe_intervals_of_coord_rand[safe_interval_ind].first;
 
+                    if (arrival_time < safe_int.first)
+                    {
+                        // departure_time += safe_int.first - arrival_time;
+                        arrival_time = safe_int.first;
+                        //it's ok, because we are slowing down
                     }
-                    if (!is_collision_motion(start_coords, coord_rand, departure_time, arrival_time))
+
+                    MDP::MSIRRT::Vertex::VertexCoordType collision_coord;
+
+                    // std::cout<<departure_time<<" "<<arrival_time<<" "<<time_to_node<<" "<<safe_int.first<<" "<<safe_int.second<<" "<<candidate_node.first->arrival_time<<" "<<candidate_node.first->safe_interval.second<<std::endl;
+                    assert(departure_time < arrival_time);
+                    if (!is_collision_motion(start_coords, coord_rand, departure_time, arrival_time,collision_coord))
                     {
                         // std::cout <<departure_time<<" "<<candidate_node.first->arrival_time<<" "<<candidate_node.first->safe_interval.first<<" "<<candidate_node.first->safe_interval.second<<std::endl;
                         // assert(!is_collision_motion(start_coords, start_coords, candidate_node.first->arrival_time, departure_time));
-                        // assert((safe_intervals_of_coord_rand[safe_interval_ind].first <= arrival_time && safe_intervals_of_coord_rand[safe_interval_ind].second >= arrival_time) || fabs(safe_intervals_of_coord_rand[safe_interval_ind].second - arrival_time) < 0.001 || fabs(safe_intervals_of_coord_rand[safe_interval_ind].first - arrival_time) < 0.001);
+                        // assert((safe_int.first <= arrival_time && safe_int.second >= arrival_time) || fabs(safe_int.second - arrival_time) < 0.001 || fabs(safe_int.first - arrival_time) < 0.001);
                         // assert((candidate_node.first->safe_interval.first <= departure_time && candidate_node.first->safe_interval.second >= departure_time));
-                        this->current_tree->add_vertex(coord_rand, safe_intervals_of_coord_rand[safe_interval_ind], candidate_node.first, departure_time, arrival_time);
+                        this->current_tree->add_vertex(coord_rand, safe_int, candidate_node.first, departure_time, arrival_time);
                         added_vertices.push_back(this->current_tree->array_of_vertices.back());
                         found_parent = true;
                         break;
                     }
+
+            
+                    // else if((departure_time > col_coord_safe_int_second || departure_time > col_coord_safe_int_first+max_dep_time_for_safe_int_check ) && departure_time < arrival_time)
+                    else if(departure_time < arrival_time)
+                       {
+                            std::vector<double> vec_collision_manager(collision_coord.data(), collision_coord.data() + collision_coord.rows() * collision_coord.cols());
+                            std::vector<std::pair<int, int>> collision_coord_safe_intervals = this->collision_manager.get_safe_intervals(vec_collision_manager);
+                            if (collision_coord_safe_intervals.size()==0)
+                            {
+                                // safe_interval_ind++;
+                                this->was_static_obstacle = true;
+                                break;
+                            }
+                            // if does not overlap, break,
+                            // if overlaps, set departure time according to lowest time at safe interval
+                            bool no_overlaps_found = true;
+                            for (const std::pair<int, int>& collision_safe_int:collision_coord_safe_intervals){
+                                //we assume, that safe_intervals are sorted by time.
+                                double time_from_candidate_to_collision =  (candidate_node.first->coords - collision_coord).norm() * (double)this->scene_task.fps / this->vmax;
+                                double time_collision_to_rand =  (coord_rand - collision_coord).norm() * (double)this->scene_task.fps / this->vmax;
+                                // assert(std::abs(time_from_candidate_to_collision+time_collision_to_rand  - time_to_node)<0.1 );
+                                // projected to coll. coordinate parent low bound (departure time)
+                                double pr_par_low = departure_time + time_from_candidate_to_collision;
+                                // projected to coll. coordinate parent high bound
+                                double pr_par_high = candidate_node.first->safe_interval.second + time_from_candidate_to_collision;
+
+                                // projected to coll. coordinate random coord low bound
+                                double pr_ran_low = safe_int.first - time_collision_to_rand;
+                                // projected to coll. coordinate random coord high bound
+                                double pr_ran_high = safe_int.second - time_collision_to_rand;
+
+                                //ignore, if safe int is lower than dep time
+                                if(collision_safe_int.second < pr_par_low){
+                                    continue;
+                                }
+                                //stop iterating, if safe int is higher, than max dep time
+                                if(collision_safe_int.first > std::min(pr_par_high,pr_ran_high)){
+                                    break;
+                                }
+
+                                // get overlapping between parent and col
+
+                                double overlap_par_col_low = std::max(pr_par_low,(double)collision_safe_int.first);
+                                double overlap_par_col_high = std::min(pr_par_high,(double)collision_safe_int.second);
+                                if (overlap_par_col_low > overlap_par_col_high){
+                                    continue;
+                                }
+
+                                // get resulting overlapping with random coord safe_int
+
+                                double result_overlap_low = std::max(overlap_par_col_low,pr_ran_low);
+                                double result_overlap_high = std::min(overlap_par_col_high,pr_ran_high);
+                                if (result_overlap_low > result_overlap_high){
+                                    continue;
+                                }
+
+                                no_overlaps_found = false;
+
+                                // std::cout<<departure_time<<" "<<candidate_node.first->safe_interval.second <<" "<<pr_par_low<<" "<<pr_par_high<<std::endl;
+                                // std::cout<<safe_int.first<<" "<<safe_int.second <<" "<<pr_ran_low<<" "<<pr_ran_high<<std::endl;
+                                // std::cout<<collision_safe_int.first<<" "<<collision_safe_int.second<<" "<<time_from_candidate_to_collision<<" "<<time_collision_to_rand<<std::endl;
+
+                                // assert(result_overlap_low >=pr_par_low);
+                                // std::cout<<result_overlap_low-time_from_candidate_to_collision << " "<< departure_time<<std::endl;
+                                // assert(result_overlap_low-time_from_candidate_to_collision >=departure_time);
+                                // std::cout<<result_overlap_low-time_from_candidate_to_collision <<" "<<result_overlap_high-time_from_candidate_to_collision<< " "<< std::min((double)candidate_node.first->safe_interval.second, (double)safe_int.second - time_to_node)<<std::endl;
+                                // assert(result_overlap_low-time_from_candidate_to_collision <=std::min((double)candidate_node.first->safe_interval.second, (double)safe_int.second - time_to_node));
+                                // if (!is_collision_motion(start_coords, collision_coord, departure_time, result_overlap_low))
+                                // {
+                                //     this->current_tree->add_vertex(collision_coord, safe_int, candidate_node.first, departure_time, result_overlap_low);
+                                //     // added_vertices.push_back(this->current_tree->array_of_vertices.back());
+                                // }
+                                if ((result_overlap_low - time_from_candidate_to_collision - departure_time)>1)
+                                {
+                                    departure_time = result_overlap_low - time_from_candidate_to_collision-1 + (result_overlap_high - result_overlap_low)/3;
+                                    // col_coord_safe_int_first = departure_time+1;
+                                    // col_coord_safe_int_second = result_overlap_high- time_from_candidate_to_collision;
+                                }
+
+                                }
+                            if (no_overlaps_found){
+                                // safe_interval_ind++;
+                                this->was_static_obstacle = true;
+                                break;
+                            }
+                        }
                 }
                 if (found_parent)
                 {
+                    this->was_static_obstacle = false;
                     break;
                 }
             }
 
             // if (!found_parent)
             // {
-            //     this->orphan_tree->add_vertex(coord_rand, safe_intervals_of_coord_rand[safe_interval_ind], nullptr, -1, safe_intervals_of_coord_rand[safe_interval_ind].second + 1);
+            //     this->orphan_tree->add_vertex(coord_rand, safe_int, nullptr, -1, safe_int.second + 1);
             // }
-            safe_interval_ind++;
+            // safe_interval_ind++;
         }
     }
     else if (this->current_tree == this->goal_tree)
     {
+        // int max_dep_time_for_safe_int_check = 3;
+        // int col_coord_safe_int_second = scene_task.frame_count+max_dep_time_for_safe_int_check;
+        // int col_coord_safe_int_first = scene_task.frame_count;
+
+        // s-1td::cout<<"set_parent goal_tree"<<std::endl;
+
         double time_to_start = (coord_rand - this->root_node->coords).norm() * (double)this->scene_task.fps / this->vmax;
-        std::sort(nearest_nodes.begin(), nearest_nodes.end(), [](const std::pair<MDP::MSIRRT::Vertex *, int> &a, std::pair<MDP::MSIRRT::Vertex *, int> &b)
-                  { return a.first->arrival_time > b.first->arrival_time; });
+        // for (const std::pair<MDP::MSIRRT::Vertex *, int> &node : nearest_nodes){
+        //     if (!node.first){
+        //         std::cout<<"null pointer in sort!"<<std::endl;
+        //         assert(false);
+        //     }
+        // }
+        std::sort(nearest_nodes.begin(), nearest_nodes.end(), [&coord_rand,this](const std::pair<MDP::MSIRRT::Vertex *, int> &a, std::pair<MDP::MSIRRT::Vertex *, int> &b)
+                  { 
+                    // Add null pointer checks to prevent segfault
+                    if (!a.first || !b.first) {
+                        std::cout<<"null pointer in sort!"<<std::endl;
+                        
+                        return a.first != nullptr; // null pointers go to the end
+                    }
+                    return a.first->arrival_time-((coord_rand - a.first->coords).norm() * (double)this->scene_task.fps / this->vmax) > b.first->arrival_time-((coord_rand - b.first->coords).norm() * (double)this->scene_task.fps / this->vmax); 
+                  });
+        // std::sort(nearest_nodes.begin(), nearest_nodes.end(), [](const std::pair<MDP::MSIRRT::Vertex *, int> &a, std::pair<MDP::MSIRRT::Vertex *, int> &b)
+        //     { return a.first->arrival_time > b.first->arrival_time; });
+
         // for (std::pair<MDP::MSIRRT::Vertex *, int> candidate_node : nearest_nodes){
         //     std::cout<<candidate_node.first->arrival_time<<", ";
         // }
         // std::cout<<std::endl;
         for (std::pair<int, int> safe_int : safe_intervals_of_coord_rand) // For each interval
         {
+            // std::cout<<"safe_int: "<<safe_int.first<<" "<<safe_int.second<<std::endl;
             // if we can't reach start from that interval - skip
             if ((safe_int.second - time_to_start) < 0)
             {
-                safe_interval_ind++;
+                // safe_interval_ind++;
                 continue;
             }
             bool found_parent = false;
@@ -437,9 +647,12 @@ std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::set_parent(MDP::
             // for each parent
             for (std::pair<MDP::MSIRRT::Vertex *, int> candidate_node : nearest_nodes)
             {
+                // std::cout<<"candidate_node: "<<candidate_node.first->arrival_time<<" "<<candidate_node.first->safe_interval.first<<" "<<candidate_node.first->safe_interval.second<<std::endl;
 
                 double time_to_node = (coord_rand - candidate_node.first->coords).norm() * (double)this->scene_task.fps / this->vmax;
-
+                if (time_to_node<1){ // too close
+                    continue;
+                }
                 // candidate nodes are sorted by descending arrival time. If arrival time of parent < safe int bound + time to node - > break;
                 if (candidate_node.first->arrival_time - time_to_node < safe_int.first)
                 {
@@ -458,32 +671,117 @@ std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::set_parent(MDP::
                 // for each departure time
                 for (double departure_time = std::min(candidate_node.first->arrival_time, (double)safe_int.second + time_to_node); departure_time >= std::max((double)candidate_node.first->safe_interval.first, (double)safe_int.first + time_to_node); departure_time -= 1)
                 {
+                    // std::cout<<"departure_time: "<<departure_time<<std::endl;
                     // assert(!is_collision_motion(candidate_node.first->coords, candidate_node.first->coords, candidate_node.first->arrival_time, departure_time));
                     double arrival_time = departure_time - time_to_node; // we travel to the past
                     // fix rounding errors
-                    if (arrival_time > safe_intervals_of_coord_rand[safe_interval_ind].second)
+                    if (arrival_time > safe_int.second)
                     {
-                        // departure_time -= arrival_time - safe_intervals_of_coord_rand[safe_interval_ind].second;
-                        arrival_time = safe_intervals_of_coord_rand[safe_interval_ind].second;
+                        // departure_time -= arrival_time - safe_int.second;
+                        arrival_time = safe_int.second;
                     }
-                    if (arrival_time < safe_intervals_of_coord_rand[safe_interval_ind].first)
+                    if (arrival_time < safe_int.first)
                     {
-                        departure_time += safe_intervals_of_coord_rand[safe_interval_ind].first - arrival_time;
+                        departure_time += safe_int.first - arrival_time;
                         if(departure_time < candidate_node.first->arrival_time){
                             continue;
                         }
-                        arrival_time = safe_intervals_of_coord_rand[safe_interval_ind].first;
+                        arrival_time = departure_time - time_to_node;
+                        assert(arrival_time >= safe_int.first);
                     }
-                    if (!is_collision_motion(coord_rand, start_coords, arrival_time, departure_time))
+                    MDP::MSIRRT::Vertex::VertexCoordType collision_coord;
+                    assert(departure_time > arrival_time);
+                    if (!is_collision_motion(coord_rand, start_coords, arrival_time, departure_time,collision_coord))
                     {
                         // assert(!is_collision_motion(start_coords, start_coords, departure_time, candidate_node.first->arrival_time));
-                        // std::cout<<safe_intervals_of_coord_rand[safe_interval_ind].first<<" "<<safe_intervals_of_coord_rand[safe_interval_ind].second<<" "<<arrival_time<<std::endl;
-                        // assert((safe_intervals_of_coord_rand[safe_interval_ind].first <= arrival_time && safe_intervals_of_coord_rand[safe_interval_ind].second >= arrival_time) || fabs(safe_intervals_of_coord_rand[safe_interval_ind].second - arrival_time) < 0.001 || fabs(safe_intervals_of_coord_rand[safe_interval_ind].first - arrival_time) < 0.001);
-                        this->current_tree->add_vertex(coord_rand, safe_intervals_of_coord_rand[safe_interval_ind], candidate_node.first, departure_time, arrival_time);
+                        // std::cout<<safe_int.first<<" "<<safe_int.second<<" "<<arrival_time<<std::endl;
+                        // assert((safe_int.first <= arrival_time && safe_int.second >= arrival_time) || fabs(safe_int.second - arrival_time) < 0.001 || fabs(safe_int.first - arrival_time) < 0.001);
+                        this->current_tree->add_vertex(coord_rand, safe_int, candidate_node.first, departure_time, arrival_time);
                         added_vertices.push_back(this->current_tree->array_of_vertices.back());
                         found_parent = true;
                         break;
                     }
+
+                    // else if((departure_time < col_coord_safe_int_first || departure_time < col_coord_safe_int_second-max_dep_time_for_safe_int_check ) && departure_time > arrival_time)
+                    else if(departure_time > arrival_time)
+                        {
+                            
+                            std::vector<std::pair<int, int>> collision_coord_safe_intervals = this->collision_manager.get_safe_intervals(std::vector<double>(collision_coord.data(), collision_coord.data() + collision_coord.rows() * collision_coord.cols()));
+                            if (collision_coord_safe_intervals.size()==0)
+                            {
+                                this->was_static_obstacle = true;
+                                break;
+                            }
+                            // if does not overlap, break,
+                            // if overlaps, set departure time according to lowest time at safe interval
+                            bool no_overlaps_found = true;
+
+                            // reverse vector, so it sorted from latest to earliest safe intervals
+                            std::reverse(collision_coord_safe_intervals.begin(), collision_coord_safe_intervals.end());
+
+                            for (const std::pair<int, int>& collision_safe_int:collision_coord_safe_intervals){
+                                //we assume, that safe_intervals are sorted by time from latest to earliest.
+                                double time_from_candidate_to_collision =  (candidate_node.first->coords - collision_coord).norm() * (double)this->scene_task.fps / this->vmax;
+                                double time_collision_to_rand =  (coord_rand - collision_coord).norm() * (double)this->scene_task.fps / this->vmax;
+
+                                // projected to coll. coordinate parent low bound
+                                double pr_par_low = candidate_node.first->safe_interval.first - time_from_candidate_to_collision;
+                                // projected to coll. coordinate parent high bound (departure time)
+                                double pr_par_high = departure_time - time_from_candidate_to_collision;
+
+                                // projected to coll. coordinate random coord low bound
+                                double pr_ran_low = safe_int.first + time_collision_to_rand;
+                                // projected to coll. coordinate random coord high bound
+                                double pr_ran_high = safe_int.second + time_collision_to_rand;
+
+                                //ignore, if safe int is higher than dep time
+                                if(collision_safe_int.first > pr_par_high){
+                                    continue;
+                                }
+                                //stop iterating, if safe int is lower, than min dep time
+                                if(collision_safe_int.second < std::min(pr_par_low,pr_ran_low)){
+                                    break;
+                                }
+
+                                // get overlapping between parent and col
+
+                                double overlap_par_col_low = std::max(pr_par_low,(double)collision_safe_int.first);
+                                double overlap_par_col_high = std::min(pr_par_high,(double)collision_safe_int.second);
+                                if (overlap_par_col_low > overlap_par_col_high){
+                                    continue;
+                                }
+
+                                // get resulting overlapping with random coord safe_int
+
+                                double result_overlap_low = std::max(overlap_par_col_low,pr_ran_low);
+                                double result_overlap_high = std::min(overlap_par_col_high,pr_ran_high);
+                                if (result_overlap_low > result_overlap_high){
+                                    continue;
+                                }
+
+                                no_overlaps_found = false;
+                                // if (!is_collision_motion(collision_coord, start_coords , result_overlap_high, departure_time))
+                                // {
+                                //     this->current_tree->add_vertex(collision_coord, safe_int, candidate_node.first, departure_time, result_overlap_high);
+                                //     // added_vertices.push_back(this->current_tree->array_of_vertices.back());
+                                // }
+                                // assert(result_overlap_high <= pr_par_high);
+                                // assert(result_overlap_high + time_from_candidate_to_collision <=departure_time);
+                                // assert(result_overlap_high + time_from_candidate_to_collision >= std::max((double)candidate_node.first->safe_interval.first, (double)safe_int.first + time_to_node));
+                                if (( departure_time-(result_overlap_high + time_from_candidate_to_collision))>1)
+                                {
+                                    departure_time = result_overlap_high + time_from_candidate_to_collision+1 - (result_overlap_high - result_overlap_low)/5;
+                                    // col_coord_safe_int_first = result_overlap_low + time_from_candidate_to_collision;
+                                    // col_coord_safe_int_second = departure_time -1;
+                                }
+
+                                }
+                            if (no_overlaps_found){
+                            //    safe_interval_ind++;
+                            this->was_static_obstacle = true;   
+                                break;
+                            }
+                        }
                 }
                 if (found_parent)
                 {
@@ -493,9 +791,9 @@ std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::set_parent(MDP::
 
             // if (!found_parent)
             // {
-            //     this->orphan_tree->add_vertex(coord_rand, safe_intervals_of_coord_rand[safe_interval_ind], nullptr, -1, safe_intervals_of_coord_rand[safe_interval_ind].second + 1);
+            //     this->orphan_tree->add_vertex(coord_rand, safe_int, nullptr, -1, safe_int.second + 1);
             // }
-            safe_interval_ind++;
+            // safe_interval_ind++;
         }
     }
 
@@ -517,6 +815,43 @@ bool MDP::MSIRRT::PlannerConnect::is_collision_state(MDP::MSIRRT::Vertex::Vertex
         robot_angles.push_back((double)coords[joint_int]);
     }
     return this->collision_manager.check_collision_frame(robot_angles, time);
+}
+
+bool MDP::MSIRRT::PlannerConnect::is_collision_motion(const MDP::MSIRRT::Vertex::VertexCoordType &start_coords, const MDP::MSIRRT::Vertex::VertexCoordType &end_coords, double &start_time, double &end_time, MDP::MSIRRT::Vertex::VertexCoordType &collision_coord)
+{
+    last_valid_coord = start_coords;
+    if (start_time >= end_time)
+    {
+        std::cout << "start_time > end_time" << std::endl;
+
+        return true;
+    }
+    MDP::MSIRRT::Vertex::VertexCoordType dir_vector = end_coords - start_coords;
+    if ((dir_vector.norm() * ((double)this->scene_task.fps) / ((double)(end_time - start_time))) > (this->vmax+0.001)) // We need 0.001 to fix floating point comparison errors.
+    {
+        std::cout << "((dir_vector.norm() * ((double)this->scene_task.fps) / ((double)(end_time - start_time))) >= this->vmax)" << std::endl;
+        std::cout <<std::fixed <<std::setprecision(15) <<(dir_vector.norm() * ((double)this->scene_task.fps) / ((double)(end_time - start_time)))<< " "<< dir_vector.norm() << " " << (double)this->scene_task.fps << " " << ((double)(end_time - start_time)) << " "<<std::fixed <<std::setprecision(15)<< this->vmax  << std::endl;
+        return true;
+    }
+
+    int interpolation_steps = std::max({(int)(dir_vector.norm() / 0.1), (int)(end_time - start_time + 0.5), 1});
+
+    // std::cout<<"interpolation_steps: "<<interpolation_steps<<" "<< dir_vector.norm()<<std::endl;
+    for (int step = 0; step <= interpolation_steps; step++)
+    {
+
+        MDP::MSIRRT::Vertex::VertexCoordType temp_coords = start_coords + dir_vector * (double)step / (double)interpolation_steps;
+        int time_frame = start_time + (double)(end_time - start_time) * (double)step / (double)interpolation_steps;
+
+        if (this->is_collision_state(temp_coords, time_frame))
+        {
+            // std::cout << "is_collision!!" << std::endl;
+            collision_coord = temp_coords;
+            return true;
+        }
+        last_valid_coord = temp_coords;
+    }
+    return false;
 }
 
 bool MDP::MSIRRT::PlannerConnect::is_collision_motion(const MDP::MSIRRT::Vertex::VertexCoordType &start_coords, const MDP::MSIRRT::Vertex::VertexCoordType &end_coords, double &start_time, double &end_time)
@@ -615,4 +950,15 @@ void MDP::MSIRRT::PlannerConnect::prune_goal_tree()
         goal_tree_node = goal_tree_node->parent;
     }
     this->finish_node = start_tree_node;
+}
+
+
+int MDP::MSIRRT::PlannerConnect::get_start_tree_vertices_count() const
+{
+    return this->start_tree->array_of_vertices.size();
+}
+
+int MDP::MSIRRT::PlannerConnect::get_goal_tree_vertices_count() const
+{
+    return this->goal_tree->array_of_vertices.size();
 }

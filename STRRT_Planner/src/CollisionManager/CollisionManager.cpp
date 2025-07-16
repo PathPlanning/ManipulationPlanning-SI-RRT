@@ -110,55 +110,80 @@ MDP::CollisionManager::CollisionManager(const MDP::ConfigReader::SceneTask _scen
     temp->tree_init_level = 2;
     this->broadphase_manager = temp;
     // get all spheres for all frames_and_ids and set their time
-    this->frames_and_ids = new std::pair<int, int>[scene_task.frame_count * (collision_object_count + this->robot_obstacle_all_joint_count)];
+    this->frames_and_ids_safe_interval = new std::pair<std::pair<int, int>, int>[ scene_task.frame_count *(collision_object_count + this->robot_obstacle_all_joint_count)];
+    this->frames_and_ids = new std::pair<int, int>[  scene_task.frame_count *(collision_object_count + this->robot_obstacle_all_joint_count)];
 
-    for (int obstacle_id = 0; obstacle_id < collision_object_count; obstacle_id++)
-    {
-        MDP::ObjectObstacleFCL *obstacle = this->obstacles[obstacle_id];
-        coal::ShapeBase *obj = obstacle->get_collision_object();
 
-        for (int frame = 0; frame < this->frame_count; frame++)
-        {
+    //TODO: adaptise for new this->frames_and_ids structure
+    // for (int obstacle_id = 0; obstacle_id < collision_object_count; obstacle_id++)
+    // {
+    //     MDP::ObjectObstacleFCL *obstacle = this->obstacles[obstacle_id];
+    //     coal::ShapeBase *obj = obstacle->get_collision_object();
 
-            if (obstacle->get_is_static())
-            {
-                MDP::ObstacleCoordinate obj_position = obstacle->get_position(0);
+    //     for (int frame = 0; frame < this->frame_count; frame++)
+    //     {
 
-                this->all_spheres.push_back(new coal::CollisionObject(std::shared_ptr<coal::CollisionGeometry>(obj->clone()), obj_position.rotation.toRotationMatrix(), obj_position.pos));
-                this->frames_and_ids[frame + scene_task.frame_count * obstacle_id].first = frame;
-                this->frames_and_ids[frame + scene_task.frame_count * obstacle_id].second = obstacle_id;
-                this->all_spheres.back()->setUserData(this->frames_and_ids + frame + scene_task.frame_count * obstacle_id);
-                this->all_spheres.back()->collisionGeometry()->computeLocalAABB();
-            }
-            else
-            {
-                MDP::ObstacleCoordinate obj_position = obstacle->get_position(frame);
+    //         if (obstacle->get_is_static())
+    //         {
+    //             MDP::ObstacleCoordinate obj_position = obstacle->get_position(0);
 
-                this->all_spheres.push_back(new coal::CollisionObject(std::shared_ptr<coal::CollisionGeometry>(obj->clone()), obj_position.rotation.toRotationMatrix(), obj_position.pos));
-                this->frames_and_ids[frame + scene_task.frame_count * obstacle_id].first = frame;
-                this->frames_and_ids[frame + scene_task.frame_count * obstacle_id].second = obstacle_id;
-                this->all_spheres.back()->setUserData(this->frames_and_ids + frame + scene_task.frame_count * obstacle_id);
-                this->all_spheres.back()->collisionGeometry()->computeLocalAABB();
-            }
-        }
-    }
+    //             this->all_spheres.push_back(new coal::CollisionObject(std::shared_ptr<coal::CollisionGeometry>(obj->clone()), obj_position.rotation.toRotationMatrix(), obj_position.pos));
+    //             this->frames_and_ids[frame + scene_task.frame_count * obstacle_id].first = frame;
+    //             this->frames_and_ids[frame + scene_task.frame_count * obstacle_id].second = obstacle_id;
+    //             this->all_spheres.back()->setUserData(this->frames_and_ids + frame + scene_task.frame_count * obstacle_id);
+    //             this->all_spheres.back()->collisionGeometry()->computeLocalAABB();
+    //         }
+    //         else
+    //         {
+    //             MDP::ObstacleCoordinate obj_position = obstacle->get_position(frame);
+
+    //             this->all_spheres.push_back(new coal::CollisionObject(std::shared_ptr<coal::CollisionGeometry>(obj->clone()), obj_position.rotation.toRotationMatrix(), obj_position.pos));
+    //             this->frames_and_ids[frame + scene_task.frame_count * obstacle_id].first = frame;
+    //             this->frames_and_ids[frame + scene_task.frame_count * obstacle_id].second = obstacle_id;
+    //             this->all_spheres.back()->setUserData(this->frames_and_ids + frame + scene_task.frame_count * obstacle_id);
+    //             this->all_spheres.back()->collisionGeometry()->computeLocalAABB();
+    //         }
+    //     }
+    // }
+
     int total_joint_id = 0;
     for (int obstacle_robot_id = 0; obstacle_robot_id < this->robot_obstacles.size(); obstacle_robot_id++)
     {
         int curr_joint_count = 0;
         for (int frame = 0; frame < this->frame_count; frame++)
         {       
-            // std::cout<<"------------------------------------"<<frame<<std::endl;
-            // std::cout<<"frame: "<<frame<<std::endl;
+            int starting_static_frame = frame;
+            int ending_static_frame = frame;
 
-            std::vector<MDP::RobotObstacleFCL::JointCollisionObject> result_obstacle_joints = this->robot_obstacles[obstacle_robot_id].get_collision_object_for_frame(frame);
-            curr_joint_count = result_obstacle_joints.size();
-            for (int joint_id = 0; joint_id < result_obstacle_joints.size(); joint_id++)
+            std::vector<MDP::RobotObstacleFCL::JointCollisionObject> static_result_obstacle_joints = this->robot_obstacles[obstacle_robot_id].get_collision_object_for_frame(frame);
+            curr_joint_count = static_result_obstacle_joints.size();
+            for (int static_frame = starting_static_frame; static_frame < this->frame_count; static_frame++)
             {
-                this->all_spheres.push_back(new coal::CollisionObject(std::shared_ptr<coal::CollisionGeometry>(result_obstacle_joints[joint_id].collision_object.get()->clone()), result_obstacle_joints[joint_id].transform));
-                this->frames_and_ids[frame + scene_task.frame_count * (this->collision_object_count + total_joint_id + joint_id)].first = frame;
-                this->frames_and_ids[frame + scene_task.frame_count * (this->collision_object_count + total_joint_id + joint_id)].second = this->collision_object_count + total_joint_id + joint_id;
-                this->all_spheres.back()->setUserData(this->frames_and_ids + frame + scene_task.frame_count * (this->collision_object_count + total_joint_id + joint_id));
+                bool is_static = true;
+                std::vector<MDP::RobotObstacleFCL::JointCollisionObject> promising_static_obstacle_joints = this->robot_obstacles[obstacle_robot_id].get_collision_object_for_frame(static_frame);
+                for (int joint_id = 0; joint_id < promising_static_obstacle_joints.size(); joint_id++)
+                {
+                    if (promising_static_obstacle_joints[joint_id].transform != static_result_obstacle_joints[joint_id].transform){
+                        is_static = false;
+                        break;
+                    }
+                }
+                if (is_static){
+                    ending_static_frame = static_frame;
+                }
+                else{
+                    break;
+                }
+            }
+            frame = ending_static_frame;
+
+            // std::cout<<"starting_static_frame: "<<starting_static_frame<<" ending_static_frame: "<<ending_static_frame<< std::endl;
+            for (int joint_id = 0; joint_id < static_result_obstacle_joints.size(); joint_id++)
+            {
+                this->all_spheres.push_back(new coal::CollisionObject(std::shared_ptr<coal::CollisionGeometry>(static_result_obstacle_joints[joint_id].collision_object.get()->clone()), static_result_obstacle_joints[joint_id].transform));
+                this->frames_and_ids_safe_interval[starting_static_frame *(collision_object_count + this->robot_obstacle_all_joint_count) +(this->collision_object_count + total_joint_id + joint_id)].first = std::pair<int, int>(starting_static_frame, ending_static_frame);
+                this->frames_and_ids_safe_interval[starting_static_frame *(collision_object_count + this->robot_obstacle_all_joint_count) +(this->collision_object_count + total_joint_id + joint_id)].second = this->collision_object_count + total_joint_id + joint_id;
+                this->all_spheres.back()->setUserData(this->frames_and_ids_safe_interval + starting_static_frame *(collision_object_count + this->robot_obstacle_all_joint_count) +(this->collision_object_count + total_joint_id + joint_id));
                 this->all_spheres.back()->collisionGeometry()->computeLocalAABB();
             }
         }
@@ -184,8 +209,8 @@ MDP::CollisionManager::CollisionManager(const MDP::ConfigReader::SceneTask _scen
             {
                 MDP::ObstacleCoordinate obj_position = obstacle->get_position(0);
                 this->by_frame_spheres[frame].push_back(new coal::CollisionObject(std::shared_ptr<coal::CollisionGeometry>(obj->clone()), obj_position.rotation.toRotationMatrix(), obj_position.pos));
-                // this->frames_and_ids[frame + scene_task.frame_count * obstacle_id].first = frame;
-                // this->frames_and_ids[frame + scene_task.frame_count * obstacle_id].second = obstacle_id;
+                this->frames_and_ids[frame + scene_task.frame_count * obstacle_id].first = frame;
+                this->frames_and_ids[frame + scene_task.frame_count * obstacle_id].second = obstacle_id;
                 // this->all_spheres.back()->setUserData(this->frames_and_ids + frame + scene_task.frame_count * obstacle_id);
                 this->by_frame_spheres[frame].back()->collisionGeometry()->computeLocalAABB();
                 this->by_frame_spheres[frame].back()->setUserData(this->frames_and_ids + frame + scene_task.frame_count * obstacle_id);
@@ -196,14 +221,15 @@ MDP::CollisionManager::CollisionManager(const MDP::ConfigReader::SceneTask _scen
                 MDP::ObstacleCoordinate obj_position = obstacle->get_position(frame);
                 this->by_frame_spheres[frame].push_back(new coal::CollisionObject(std::shared_ptr<coal::CollisionGeometry>(obj->clone()), obj_position.rotation.toRotationMatrix(), obj_position.pos));
 
-                // this->frames_and_ids[frame + scene_task.frame_count * obstacle_id].first = frame;
-                // this->frames_and_ids[frame + scene_task.frame_count * obstacle_id].second = obstacle_id;
+                this->frames_and_ids[frame + scene_task.frame_count * obstacle_id].first = frame;
+                this->frames_and_ids[frame + scene_task.frame_count * obstacle_id].second = obstacle_id;
                 // this->all_spheres.back()->setUserData(this->frames_and_ids + frame + scene_task.frame_count * obstacle_id);
                 this->by_frame_spheres[frame].back()->collisionGeometry()->computeLocalAABB();
                 this->by_frame_spheres[frame].back()->setUserData(this->frames_and_ids + frame + scene_task.frame_count * obstacle_id);
             }
         }
         int total_joint_id = 0;
+
         for (int obstacle_robot_id = 0; obstacle_robot_id < this->robot_obstacles.size(); obstacle_robot_id++)
         {
 
@@ -212,6 +238,8 @@ MDP::CollisionManager::CollisionManager(const MDP::ConfigReader::SceneTask _scen
             {
                 this->by_frame_spheres[frame].push_back(new coal::CollisionObject(std::shared_ptr<coal::CollisionGeometry>(result_obstacle_joints[joint_id].collision_object.get()->clone()), result_obstacle_joints[joint_id].transform));
                 this->by_frame_spheres[frame].back()->collisionGeometry()->computeLocalAABB();
+                this->frames_and_ids[frame + scene_task.frame_count * (this->collision_object_count + total_joint_id + joint_id)].first = frame;
+                this->frames_and_ids[frame + scene_task.frame_count * (this->collision_object_count + total_joint_id + joint_id)].second =  this->collision_object_count + total_joint_id + joint_id;
                 this->by_frame_spheres[frame].back()->setUserData(this->frames_and_ids + frame + scene_task.frame_count * (this->collision_object_count + total_joint_id + joint_id));
             }
 
@@ -260,6 +288,7 @@ MDP::CollisionManager::~CollisionManager()
 
     delete[] this->positions;
     delete[] this->frames_and_ids;
+    delete[] this->frames_and_ids_safe_interval;
     delete this->broadphase_manager;
 }
 bool MDP::CollisionManager::check_collision(const std::vector<double> &robot_angles, float &time)
@@ -431,7 +460,7 @@ std::vector<std::pair<int, int>> MDP::CollisionManager::get_safe_intervals_priva
     {
         MDP::ResultsWriter::get_instance().safe_interval_broadphase_counter+=1;
         coal::CollisionObject joint_coll_obj(main_robot_collision_models[robot_joint_id+this->robot_joint_offset].collision_object, main_robot_collision_models[robot_joint_id+this->robot_joint_offset].transform);
-        std::pair<int, int> *joint_ind = new std::pair<int, int>(-1, robot_joint_id);
+        std::pair<std::pair<int, int>, int> *joint_ind = new std::pair<std::pair<int, int>, int>(std::pair<int, int>(-1, -1), robot_joint_id);
         joint_coll_obj.setUserData(joint_ind);
         // std::cout<<"1"<<std::endl;
         this->broadphase_manager->collide(&joint_coll_obj, &collision_callback);
@@ -439,7 +468,7 @@ std::vector<std::pair<int, int>> MDP::CollisionManager::get_safe_intervals_priva
         // std::cout<<"2"<<std::endl;
     }
 
-    std::vector<int> frames_in_collision(collision_callback.frames_in_collision);
+    std::vector<int> frames_in_collision(collision_callback.set_frames_in_collision.begin(), collision_callback.set_frames_in_collision.end());
 
     if (frames_in_collision.size() == 0)
     {
@@ -447,11 +476,12 @@ std::vector<std::pair<int, int>> MDP::CollisionManager::get_safe_intervals_priva
         MDP::ResultsWriter::get_instance().number_of_safe_intervals += 1;
 
         results.emplace_back(0, scene_task.frame_count - 1);
+        // std::cout<<"safe interval: "<<0<<" "<<scene_task.frame_count - 1<<std::endl;
         return results;
     }
     // sort and delete duplicates
-    std::sort(frames_in_collision.begin(), frames_in_collision.end());
-    frames_in_collision.erase(std::unique(frames_in_collision.begin(), frames_in_collision.end()), frames_in_collision.end());
+    // std::sort(frames_in_collision.begin(), frames_in_collision.end());
+    // frames_in_collision.erase(std::unique(frames_in_collision.begin(), frames_in_collision.end()), frames_in_collision.end());
 
     int last_collision_frame = -1;
     for (const int collision_frame : frames_in_collision)
@@ -471,6 +501,11 @@ std::vector<std::pair<int, int>> MDP::CollisionManager::get_safe_intervals_priva
         results.emplace_back(frames_in_collision.back() + 1, this->scene_task.frame_count - 1);
     }
 
+    // for (const auto &result : results)
+    // {
+    //     std::cout<<"safe interval: "<<result.first<<" "<<result.second<<std::endl;
+    // }
+    // std::cout<<"--------------------------------"<<std::endl;
     MDP::ResultsWriter::get_instance().number_of_safe_intervals += results.size();
     return results;
 }
@@ -584,9 +619,11 @@ bool MDP::SafeIntervalCollisionCallback::collide(coal::CollisionObject *o1, coal
     coal::CollisionResult col_res;
 
     int *robot_joint_id;
-    std::pair<int, int> *obstacle_frame_and_id1;
-    std::pair<int, int> *obstacle_frame_and_id2;
+    std::pair<std::pair<int, int> , int> *obstacle_frame_and_id1;
+    std::pair<std::pair<int, int> , int> *obstacle_frame_and_id2;
     int frame = 0;
+    int frame_low = 0;
+    int frame_high = 0;
     // if (!((o1->getNodeType() == coal::NODE_TYPE::GEOM_BOX && o2->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE) ||(o1->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE && o2->getNodeType() == coal::NODE_TYPE::GEOM_BOX) ||(o1->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE && o2->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE) ||(o1->getNodeType() == coal::NODE_TYPE::GEOM_SPHERE && o2->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE) || (o2->getNodeType() == coal::NODE_TYPE::GEOM_SPHERE && o1->getNodeType() == coal::NODE_TYPE::GEOM_CAPSULE)))
     // {
     //     std::cout << o1->getNodeType() << std::endl;
@@ -595,18 +632,46 @@ bool MDP::SafeIntervalCollisionCallback::collide(coal::CollisionObject *o1, coal
     //     coal::collide(o1, o2, col_req, col_res);
     //     return col_res.isCollision();
     // }
-    obstacle_frame_and_id1 = (std::pair<int, int> *)o1->getUserData();
-    obstacle_frame_and_id2 = (std::pair<int, int> *)o2->getUserData();
+    obstacle_frame_and_id1 = (std::pair<std::pair<int, int> , int> *)o1->getUserData();
+    obstacle_frame_and_id2 = (std::pair<std::pair<int, int> , int> *)o2->getUserData();
 
-    if (obstacle_frame_and_id1->first == -1)
+    if (obstacle_frame_and_id1->first.first == -1)
     {
+        frame_low = obstacle_frame_and_id2->first.first;
+        frame_high = obstacle_frame_and_id2->first.second;
+        
+        // Check if all frames in the interval [frame_low, frame_high] are already in collision
+        bool all_frames_in_collision = true;
+        for (int frame = frame_low; frame <= frame_high; frame++) {
+            if (this->set_frames_in_collision.find(frame) == this->set_frames_in_collision.end()) {
+                all_frames_in_collision = false;
+                break;  // Early termination - found a frame not in collision
+            }
+        }
+        if (all_frames_in_collision) {
+            return false;
+        }
+        
         this->collision_pairs->at(obstacle_frame_and_id1->second * this->collision_object_count + (obstacle_frame_and_id2->second))(o1->getTransform(), o2->getTransform(), col_req, col_res);
-        frame = obstacle_frame_and_id2->first;
     }
-    else if (obstacle_frame_and_id2->first == -1)
+    else if (obstacle_frame_and_id2->first.first == -1)
     {
+        frame_low = obstacle_frame_and_id1->first.first;
+        frame_high = obstacle_frame_and_id1->first.second;
+        
+        // Check if all frames in the interval [frame_low, frame_high] are already in collision
+        bool all_frames_in_collision = true;
+        for (int frame = frame_low; frame <= frame_high; frame++) {
+            if (this->set_frames_in_collision.find(frame) == this->set_frames_in_collision.end()) {
+                all_frames_in_collision = false;
+                break;  // Early termination - found a frame not in collision
+            }
+        }
+        if (all_frames_in_collision) {
+            return false;
+        }
+        
         this->collision_pairs->at(obstacle_frame_and_id2->second * this->collision_object_count + (obstacle_frame_and_id1->second))(o2->getTransform(), o1->getTransform(), col_req, col_res);
-        frame = obstacle_frame_and_id1->first;
     
     }
     else
@@ -629,7 +694,10 @@ bool MDP::SafeIntervalCollisionCallback::collide(coal::CollisionObject *o1, coal
         // std::cout<<"obstacle_frame_and_id2->first "<<obstacle_frame_and_id2->first<<std::endl;
         // std::cout<<"obstacle_frame_and_id2->second "<<obstacle_frame_and_id2->second<<std::endl;
 
-        this->frames_in_collision.push_back(frame);
+        for (int frame = frame_low; frame <= frame_high; frame++)
+        {
+            this->set_frames_in_collision.insert(frame);
+        }
     }
 
     return false; // return false, because if return true, than broadphase ends.
@@ -748,9 +816,9 @@ void MDP::CollisionManager::benchmark_broadphase()
 
     robot_angles.resize(6);
     long long naive_si_time = 0;
-    for (int j = 0; j < 100000; j++)
+    for (int j = 0; j < 1000; j++)
     {
-        std::cout << "------------------------------" << std::endl;
+        std::cout << "------------------------------" << j<< std::endl;
         for (int i = 0; i < 6; i++)
         {
             robot_angles[i] = (probability_gen(gen) * (robot_limits[i].second - robot_limits[i].first) + robot_limits[i].first);

@@ -23,6 +23,8 @@ namespace MDP::MSIRRT
         bool solve();
         std::vector<MDP::MSIRRT::Vertex*> get_final_path() const;
         bool check_path(std::vector<MDP::MSIRRT::Vertex*>& path);
+        int get_start_tree_vertices_count() const;
+        int get_goal_tree_vertices_count() const;
 
     private:
         MDP::ConfigReader::SceneTask scene_task;
@@ -45,12 +47,15 @@ namespace MDP::MSIRRT
         std::vector<MDP::MSIRRT::Vertex *> rewire(MDP::MSIRRT::Vertex *node);
         std::pair<int, int> calculate_delta(MDP::MSIRRT::Vertex *candidate_node, MDP::MSIRRT::Vertex::VertexCoordType &end_coords, std::vector<std::pair<int, int>> &safe_intervals_of_coord_rand, int &safe_interval_ind);
         bool is_collision_motion(const MDP::MSIRRT::Vertex::VertexCoordType &start_coords, const MDP::MSIRRT::Vertex::VertexCoordType &end_coords, double &start_time, double &end_time);
+        bool is_collision_motion(const MDP::MSIRRT::Vertex::VertexCoordType &start_coords, const MDP::MSIRRT::Vertex::VertexCoordType &end_coords, double &start_time, double &end_time, MDP::MSIRRT::Vertex::VertexCoordType& collision_coord);
         bool is_collision_state(MDP::MSIRRT::Vertex::VertexCoordType &coords, int &time);
         // bool is_collision_motion(const MDP::MSIRRT::Vertex::VertexCoordType& start_coords, const  MDP::MSIRRT::Vertex::VertexCoordType& end_coords, double& start_time, double& end_time,MDP::MSIRRT::Vertex::VertexCoordType& last_valid_coord, int& last_valid_time);
         std::vector<MDP::MSIRRT::Vertex*> grow_tree(MDP::MSIRRT::Vertex::VertexCoordType &coord_rand, std::vector<std::pair<int, int>> &safe_intervals_of_coord_rand);
         bool connect_trees(MDP::MSIRRT::Vertex::VertexCoordType& coord_rand, std::vector<std::pair<int, int>>& safe_intervals_of_coord_rand,std::vector<MDP::MSIRRT::Vertex* > new_nodes);
         void swap_trees();
         void prune_goal_tree();
+        void warmup_start_tree();
+        void warmup_goal_tree();
         MDP::MSIRRT::Tree *start_tree;
         MDP::MSIRRT::Tree *goal_tree;
         MDP::MSIRRT::Tree *orphan_tree;
@@ -75,5 +80,9 @@ namespace MDP::MSIRRT
         std::mt19937 gen;
         bool goal_sampled;
         std::vector<std::pair<int, int>> goal_safe_intervals;
+
+
+        bool was_static_obstacle = false;
+        MDP::MSIRRT::Vertex::VertexCoordType last_valid_coord;
     };
 }

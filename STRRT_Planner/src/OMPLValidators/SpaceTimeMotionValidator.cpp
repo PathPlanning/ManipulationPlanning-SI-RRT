@@ -118,8 +118,8 @@ bool MDP::SpaceTimeMotionValidator::checkMotion(const ob::State *s1, const ob::S
             si->freeState(interpolated_state);
             return false;
         }
-        si->copyState(lastValid.first,interpolated_state);
-        lastValid.second = t;
+        // si->copyState(lastValid.first,interpolated_state);
+        // lastValid.second = t;
     }
     si->freeState(interpolated_state);
     return true;

@@ -11,7 +11,7 @@ import numpy as np
 import copy
 import subprocess
 from concurrent.futures import ProcessPoolExecutor
-NUM_CPUS = 8
+NUM_CPUS = 128
 
 
 def get_robot(name, coords, rotation):
@@ -246,7 +246,7 @@ def main() -> None:
 
 
     robot_number = [2, 4, 6, 8]
-    number_of_test_cases = 3
+    number_of_test_cases = 25
     number_of_goals = 10
     os.makedirs("multiagent_tests", exist_ok=False)
     

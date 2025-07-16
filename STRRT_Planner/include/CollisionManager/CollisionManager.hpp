@@ -31,6 +31,7 @@ namespace MDP
         std::vector<coal::ComputeCollision> *collision_pairs;
         bool collide(coal::CollisionObject *o1, coal::CollisionObject *o2);
         int collision_object_count;
+        std::set<int> set_frames_in_collision;
         std::vector<int> frames_in_collision;
 
         ~SafeIntervalCollisionCallback() {};
@@ -134,6 +135,7 @@ namespace MDP
         int robot_obstacle_all_joint_count;
 
         std::pair<int, int> *frames_and_ids;
+        std::pair<std::pair<int, int>, int> *frames_and_ids_safe_interval;
         std::vector<coal::CollisionObject *> all_spheres;
         coal::BroadPhaseCollisionManager *broadphase_manager;
 

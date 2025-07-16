@@ -398,7 +398,7 @@ std::vector<MDP::RobotObstacleFCL::JointCollisionObject> MDP::RobotObstacleFCL::
 
     double time = (double)frame/(double)this->scene_task.fps+this->scene_task.start_time;
 
-    if (trajectory.back().time<=time){
+    if (trajectory.back().time<=time+0.00001){
         return this->get_collision_object_for_robot_angles(trajectory.back().configuration_coordinates);
     }
     for (int state_idx = 0; state_idx < this->trajectory.size() - 1; state_idx++)
@@ -421,7 +421,13 @@ std::vector<MDP::RobotObstacleFCL::JointCollisionObject> MDP::RobotObstacleFCL::
             return this->get_collision_object_for_robot_angles(result_coord);
         }
     }
+    // std::cout<<"frame: "<<frame<<" time: "<<time<<" frame_count: "<<this->scene_task.frame_count<<" trajectory.back().time: "<<trajectory.back().time<<std::endl;
+    // for (int state_idx = 0; state_idx < this->trajectory.size() - 1; state_idx++)
+    // {
+    //     std::cout<<"state_idx: "<<state_idx<<" time: "<<this->trajectory[state_idx].time<<" frame: "<<this->to_frame(this->trajectory[state_idx].time)<<std::endl;
+    // }
     assert(false);
+
     // this->robot_chain.segments[0].setFrameToTip(KDL::Frame(this->initial_base_frame.M * KDL::Rotation::Quaternion(base_position[0].quat_x, base_position[0].quat_y, base_position[0].quat_z, base_position[0].quat_w), this->initial_base_frame.p + KDL::Vector(base_position[0].pos[0], base_position[0].pos[1], base_position[0].pos[2]))); // TODO: remove [0] and check if robot is static
 
     // if (this->to_frame(trajectory.back().time)<=frame){

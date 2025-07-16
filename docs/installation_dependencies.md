@@ -25,7 +25,7 @@ This will download a containers with all the necessary dependencies pre-installe
 1. **Install basic dependencies**:
    ```bash
    sudo apt update
-   sudo apt install -y cmake build-essential python3-dev python3-pip libboost-all-dev swig htop nano curl lsb-release git
+   sudo apt install -y cmake build-essential python3-dev python3-pip python3-venv libboost-all-dev swig htop nano curl lsb-release git
    ```
 
 2. **Install ROS2**:
@@ -45,7 +45,7 @@ locale  # verify settings
 ```
 
 ```bash
-sudo apt install software-properties-common
+sudo apt install -y software-properties-common
 sudo add-apt-repository universe
 ```
 
@@ -53,14 +53,14 @@ sudo add-apt-repository universe
 sudo apt update && sudo apt install curl -y
 export ROS_APT_SOURCE_VERSION=$(curl -s https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest | grep -F "tag_name" | awk -F\" '{print $4}')
 curl -L -o /tmp/ros2-apt-source.deb "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ROS_APT_SOURCE_VERSION}/ros2-apt-source_${ROS_APT_SOURCE_VERSION}.$(. /etc/os-release && echo $VERSION_CODENAME)_all.deb" # If using Ubuntu derivates use $UBUNTU_CODENAME
-sudo apt install /tmp/ros2-apt-source.deb
+sudo apt install -y /tmp/ros2-apt-source.deb
 ```
 
 ```bash
 sudo apt update && sudo apt install ros-dev-tools
 sudo apt update
 sudo apt upgrade
-sudo apt install ros-jazzy-desktop
+sudo apt install -y ros-jazzy-desktop
 ```
 
 
@@ -99,7 +99,7 @@ echo "export eigenpy_DIR=/opt/openrobots" >> ~/.bashrc
 
 ```bash 
 pip3 install --upgrade pip
-pip3 install -U wheel eigenpy numpy castxml pybullet matplotlib scipy pygccxml pyplusplus
+pip3 install -U wheel eigenpy numpy castxml pybullet matplotlib scipy pygccxml pyplusplus ipykernel
 ```
 
 5. Install RapidJSON
