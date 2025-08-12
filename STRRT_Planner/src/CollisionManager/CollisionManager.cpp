@@ -261,7 +261,21 @@ MDP::CollisionManager::~CollisionManager()
 {
     for (int i = 0; i < this->obstacles.size(); i++)
     {
-        delete this->obstacles[i];
+        // Check the type of obstacle and cast appropriately before deletion
+        std::string obstacle_type = this->obstacles[i]->get_type();
+        if (obstacle_type == "static_box" || obstacle_type == "dynamic_box")
+        {
+            delete static_cast<MDP::CubeObstaclesFCL*>(this->obstacles[i]);
+        }
+        else if (obstacle_type == "static_sphere" || obstacle_type == "dynamic_sphere")
+        {
+            delete static_cast<MDP::SphereObstaclesFCL*>(this->obstacles[i]);
+        }
+        else
+        {
+            assert(false);//undefined behaviour
+            delete this->obstacles[i];
+        }
     }
 
     this->obstacles.clear();
