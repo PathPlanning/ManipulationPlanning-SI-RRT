@@ -193,7 +193,9 @@ rapidjson::Value &MDP::ResultsWriter::convert_path_to_json(const std::vector<MDP
 void MDP::ResultsWriter::save_error_json(const std::string &error_msg)
 {
 
-    data_to_export.AddMember("error_msg", rapidjson::StringRef(error_msg.c_str()), this->allocator);
+    rapidjson::Value error_msg_value;
+    error_msg_value.SetString(error_msg.c_str(), static_cast<rapidjson::SizeType>(error_msg.length()), this->allocator);
+    data_to_export.AddMember("error_msg", error_msg_value, this->allocator);
 
     rapidjson::StringBuffer buffer;
     rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);

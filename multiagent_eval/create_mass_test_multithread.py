@@ -54,7 +54,7 @@ def create_scene(kolvo_robotov: int) -> dict:
     }
     workplace_radius = 0.55
     if kolvo_robotov == 8:
-        workplace_radius = 0.6
+        workplace_radius = 0.7
     elif kolvo_robotov == 2:
         workplace_radius = 0.4
     for robot_number in range(kolvo_robotov):
@@ -246,7 +246,7 @@ def main() -> None:
 
 
     robot_number = [2, 4, 6, 8]
-    number_of_test_cases = 25
+    number_of_test_cases = 50
     number_of_goals = 10
     os.makedirs("multiagent_tests", exist_ok=False)
     

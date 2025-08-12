@@ -4,7 +4,7 @@ Process multiagent mass test
 python3 ./multiagent_eval/do_mass_test_multithread.py --path_to_tasks ./multiagent_tests --path_to_strrt_config_json ./STRRT/strrt_config.json 
 
 """
-
+import random
 import argparse
 import os
 import json
@@ -18,9 +18,9 @@ from tqdm import tqdm
 import subprocess
 NUM_CPUS = 128
 MAX_ATTEMPTS=5
-MAX_FILE_FIND_ATTEMPS = 5
+MAX_FILE_FIND_ATTEMPS = 10
 SAVE_INTERMEDIATE_RESULT = False
-NUMBER_OF_SEED_ITERATIONS = 1
+NUMBER_OF_SEED_ITERATIONS = 10
 
 def create_one_agent_scene_task_json(start_configuration:List[float], goal_configuration:List[float], goal_count, start_time:float, obstacles:List[dict], scene_parsed_data: dict, robot: dict,filename_prefix: str, file_dir_path:str, frame_count:int,attempt)->str:
     """
@@ -136,11 +136,14 @@ def process_one_task(test_dir_path:str ,path_to_strrt_config_json:str,seed,test_
         for goal_count, goal_configuration in enumerate(robot['end_configuration']):
             need_to_go = True
             attempt=1
+            strrtlogs = {}
+            strrtlogs["final_planner_data"] = {}
+            strrtlogs["final_planner_data"]["has_result"] = False
             while need_to_go:
                 frame_count = int(500*attempt**1.3) # heuristic
                 
                 scene_task_filepath = create_one_agent_scene_task_json( 
-                start_configuration, goal_configuration, goal_count, start_time, obstacles,
+                start_configuration, goal_configuration, goal_count, start_time+0.02, obstacles,
                 scene_parsed_data, robot, f"{planner_prefix}_", path_to_generated_tasks,frame_count*attempt,attempt)
 
                 command = f"{planner_bin_path} {scene_task_filepath} {path_to_generated_tasks} {path_to_strrt_config_json} {seed}"
@@ -158,6 +161,9 @@ def process_one_task(test_dir_path:str ,path_to_strrt_config_json:str,seed,test_
                 file_finding_attempt = 0
                 while True:
                     file_finding_attempt+=1
+                    if file_finding_attempt>MAX_FILE_FIND_ATTEMPS:
+                        attempt+=1
+                        break
                     result_filename = list(filter(lambda x: x.startswith(planner_logs_prefix), os.listdir(path_to_generated_tasks)))
                     if len(result_filename) == 0:
                         assert(file_finding_attempt<=MAX_FILE_FIND_ATTEMPS)
@@ -182,12 +188,13 @@ def process_one_task(test_dir_path:str ,path_to_strrt_config_json:str,seed,test_
                         time.sleep(1)
                         continue
                     except UnicodeDecodeError as e:
-                        print(f"UnicodeDecodeError error: {e}")
+                        print(f"UnicodeDecodeError error: {e}, {command}")
                         assert(file_finding_attempt<=MAX_FILE_FIND_ATTEMPS)
                         time.sleep(1)
                         continue
                     
-                
+                if file_finding_attempt>MAX_FILE_FIND_ATTEMPS:
+                    continue
                 # print(strrtlogs["final_planner_data"])
                 assert(strrtlogs["path_to_scene_json"] == scene_task_filepath)
 
@@ -254,11 +261,13 @@ def main(path_to_tasks: str, path_to_strrt_config_json: str) -> None:
         
     with ProcessPoolExecutor(max_workers=NUM_CPUS) as executor:
         c = 0
+        NUMBER_OF_SEED_ITERATIONS = 5
+        random_seeds = [random.randint(0, 1000000) for _ in range(NUMBER_OF_SEED_ITERATIONS)]
         for test_dir_path in tqdm(tests):
-            for i in range(0,NUMBER_OF_SEED_ITERATIONS):
+            for i in random_seeds:
                 c+=1
-                futures.append(executor.submit(process_one_task, test_dir_path, path_to_strrt_config_json,42,c,len(tests)*NUMBER_OF_SEED_ITERATIONS,'./MSIRRT/build/MSIRRT_Planner','msirrt',"MSIRRT_planner_logs"))
-                # futures.append(executor.submit(process_one_task, test_dir_path, path_to_strrt_config_json,i,c,len(tests)*NUMBER_OF_SEED_ITERATIONS,'./STRRT_Planner/build/STRRT_Planner','strrt',"STRRT*_planner_logs"))
+                # futures.append(executor.submit(process_one_task, test_dir_path, path_to_strrt_config_json,i,c,len(tests)*NUMBER_OF_SEED_ITERATIONS,'./MSIRRT/build/MSIRRT_Planner','msirrt',"MSIRRT_planner_logs"))
+                futures.append(executor.submit(process_one_task, test_dir_path, path_to_strrt_config_json,i,c,len(tests)*NUMBER_OF_SEED_ITERATIONS,'./STRRT_Planner/build/STRRT_Planner','strrt',"STRRT*_planner_logs"))
                     
         
     for future in tqdm(futures):

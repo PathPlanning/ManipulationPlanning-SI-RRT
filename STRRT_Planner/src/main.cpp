@@ -181,16 +181,16 @@ int main(int argc, char **argv)
     // std::cout<<(double)(SceneTask.get_scene_task().frame_count) / (double)SceneTask.get_scene_task().fps << " "<<((double)(SceneTask.get_scene_task().frame_count) / (double)SceneTask.get_scene_task().fps) * (double)SceneTask.get_scene_task().fps<<std::endl;
     
     if(!si->satisfiesBounds(start.get())){
-        MDP::ResultsWriter::get_instance().save_error_json("start pose does not satisfy bounds");
+        // MDP::ResultsWriter::get_instance().save_error_json("start pose does not satisfy bounds");
         assert(si->satisfiesBounds(start.get()));
     }
     if(!si->satisfiesBounds(goal.get())){
-        MDP::ResultsWriter::get_instance().save_error_json("goal pose does not satisfy bounds");
+        // MDP::ResultsWriter::get_instance().save_error_json("goal pose does not satisfy bounds");
         assert(si->satisfiesBounds(goal.get()));
     }
 
     if(!si->isValid(start.get())){
-        MDP::ResultsWriter::get_instance().save_error_json("start pose is not valid (self crossing detected)!");
+        // MDP::ResultsWriter::get_instance().save_error_json("start pose is not valid (self crossing detected)!");
         assert(si->isValid(start.get()));
     }
 

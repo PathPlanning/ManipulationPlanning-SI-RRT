@@ -351,6 +351,14 @@ bool MDP::MSIRRT::PlannerConnect::extend(MDP::MSIRRT::Vertex::VertexCoordType &c
 
     coords_of_new = q_nearest->coords + delta_vector.normalized() * this->planner_range;
 
+    MDP::MSIRRT::Vertex *q_nearest_of_new = this->get_nearest_node(coords_of_new); // find nearest neighbor
+
+     delta_vector = coords_of_new - q_nearest_of_new->coords;
+     delta = delta_vector.norm();
+    if (delta <= (1 / 100000000)) // zero division check
+    {
+        return false;   
+    }
     return true;
 }
 MDP::MSIRRT::Vertex *MDP::MSIRRT::PlannerConnect::get_nearest_node(const MDP::MSIRRT::Vertex::VertexCoordType &coords)
@@ -388,7 +396,7 @@ std::vector<std::pair<MDP::MSIRRT::Vertex *, int>> MDP::MSIRRT::PlannerConnect::
 std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::set_parent(MDP::MSIRRT::Vertex::VertexCoordType &coord_rand, std::vector<std::pair<int, int>> &safe_intervals_of_coord_rand)
 {
     this->was_static_obstacle = false;
-    std::vector<std::pair<MDP::MSIRRT::Vertex *, int>> nearest_nodes = this->get_nearest_node_by_radius(coord_rand,12* this->planner_range * this->planner_range, (this->current_tree));
+    std::vector<std::pair<MDP::MSIRRT::Vertex *, int>> nearest_nodes = this->get_nearest_node_by_radius(coord_rand,25* this->planner_range * this->planner_range, (this->current_tree));
 
     std::vector<MDP::MSIRRT::Vertex *> added_vertices;
     // int safe_interval_ind = 0;
@@ -442,8 +450,9 @@ std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::set_parent(MDP::
                 // std::cout<<"candidate_node: "<<candidate_node.first->arrival_time<<" "<<candidate_node.first->safe_interval.first<<" "<<candidate_node.first->safe_interval.second<<std::endl;
 
                 double time_to_node = (coord_rand - candidate_node.first->coords).norm() * (double)this->scene_task.fps / this->vmax;
-                if (time_to_node<1){ // too close
-                    continue;
+                if (time_to_node<1){ // duplicate... this point was already added
+                    found_parent = true;
+                    break;
                 }
                 // candidate nodes are sorted by ascending arrival time. If arrival time > safe int bound + time to node -> break;
                 if (candidate_node.first->arrival_time + time_to_node > safe_int.second)
@@ -495,6 +504,11 @@ std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::set_parent(MDP::
                         // assert(!is_collision_motion(start_coords, start_coords, candidate_node.first->arrival_time, departure_time));
                         // assert((safe_int.first <= arrival_time && safe_int.second >= arrival_time) || fabs(safe_int.second - arrival_time) < 0.001 || fabs(safe_int.first - arrival_time) < 0.001);
                         // assert((candidate_node.first->safe_interval.first <= departure_time && candidate_node.first->safe_interval.second >= departure_time));
+                        // std::cout<<"add_vertex"<<std::endl;
+                        // std::cout<<coord_rand.transpose()<<std::endl;
+                        // std::cout<<safe_int.first<<" "<<safe_int.second<<std::endl;
+                        // std::cout<<candidate_node.first->coords.transpose()<<std::endl;
+                        // std::cout<<departure_time<<" "<<arrival_time<<std::endl;    
                         this->current_tree->add_vertex(coord_rand, safe_int, candidate_node.first, departure_time, arrival_time);
                         added_vertices.push_back(this->current_tree->array_of_vertices.back());
                         found_parent = true;
@@ -650,8 +664,9 @@ std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::set_parent(MDP::
                 // std::cout<<"candidate_node: "<<candidate_node.first->arrival_time<<" "<<candidate_node.first->safe_interval.first<<" "<<candidate_node.first->safe_interval.second<<std::endl;
 
                 double time_to_node = (coord_rand - candidate_node.first->coords).norm() * (double)this->scene_task.fps / this->vmax;
-                if (time_to_node<1){ // too close
-                    continue;
+                if (time_to_node<1){ // duplicate... this point was already added
+                    found_parent = true;
+                    break;
                 }
                 // candidate nodes are sorted by descending arrival time. If arrival time of parent < safe int bound + time to node - > break;
                 if (candidate_node.first->arrival_time - time_to_node < safe_int.first)
@@ -696,6 +711,11 @@ std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::set_parent(MDP::
                         // assert(!is_collision_motion(start_coords, start_coords, departure_time, candidate_node.first->arrival_time));
                         // std::cout<<safe_int.first<<" "<<safe_int.second<<" "<<arrival_time<<std::endl;
                         // assert((safe_int.first <= arrival_time && safe_int.second >= arrival_time) || fabs(safe_int.second - arrival_time) < 0.001 || fabs(safe_int.first - arrival_time) < 0.001);
+                        // std::cout<<"add_vertex"<<std::endl;
+                        // std::cout<<coord_rand.transpose()<<std::endl;
+                        // std::cout<<safe_int.first<<" "<<safe_int.second<<std::endl;
+                        // std::cout<<candidate_node.first->coords.transpose()<<std::endl;
+                        // std::cout<<departure_time<<" "<<arrival_time<<std::endl;    
                         this->current_tree->add_vertex(coord_rand, safe_int, candidate_node.first, departure_time, arrival_time);
                         added_vertices.push_back(this->current_tree->array_of_vertices.back());
                         found_parent = true;
