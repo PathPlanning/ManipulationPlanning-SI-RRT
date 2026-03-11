@@ -1,6 +1,7 @@
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 ARG DEBIAN_FRONTEND=noninteractive
+
 # Install necessary dependencies
 RUN apt-get update && apt-get install -y \
     cmake \
@@ -17,6 +18,7 @@ RUN apt-get update && apt-get install -y \
     lsb-release \
     git && \
     rm -rf /var/lib/apt/lists/* 
+
 #install ros2
 RUN locale && \
     apt update && apt install -y locales && \
@@ -32,8 +34,8 @@ RUN apt install -y software-properties-common && \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | tee /etc/apt/sources.list.d/ros2.list > /dev/null && \
     apt update && \
     apt upgrade -y && \
-    apt install -y ros-humble-desktop && \
-    echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc 
+    apt install -y ros-jazzy-desktop && \
+    echo "source /opt/ros/jazzy/setup.bash" >> ~/.bashrc 
 
 
 
@@ -43,17 +45,18 @@ RUN apt-get update && apt-get install  -y \
     libnanoflann-dev \
     libpcl-dev \
     libeigen3-dev \
-    libkdl-parser-dev \
+    # libkdl-parser-dev \
+    ros-jazzy-kdl-parser \
     libgflags-dev \
     libgoogle-glog-dev \
     liborocos-kdl-dev \
     libyaml-cpp-dev \
-    liburdf-dev \
+    # liburdf-dev \
+    ros-jazzy-urdf \
     libfcl-dev && \
     rm -rf /var/lib/apt/lists/* 
 
-# #install eigenpy for ompl
-
+# #install eigenpy for ompl and coal
 RUN sh -c "echo 'deb [arch=amd64] http://robotpkg.openrobots.org/packages/debian/pub $(lsb_release -cs) robotpkg' >> /etc/apt/sources.list.d/robotpkg.list" && \
     curl http://robotpkg.openrobots.org/packages/debian/robotpkg.key |  apt-key add - && \
     apt-get update && \
@@ -61,19 +64,45 @@ RUN sh -c "echo 'deb [arch=amd64] http://robotpkg.openrobots.org/packages/debian
 
 ENV eigenpy_DIR=/opt/openrobots
 
+RUN apt-get update && apt-get install -y \
+    qhull-bin \
+    octomap-tools \
+    castxml \
+    python3-rosdep \
+    python3-venv \
+    python3-pip && \
+    rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update && apt-get install  -y \ 
-    # install qhull and octomap for fcl and castxml for ompl
-    qhull-bin octomap-tools castxml  python3-rosdep    && \
-    #  Python bindings for OMPL
-    pip3 install --upgrade pip && \
-    pip3 install -U wheel eigenpy numpy castxml pybullet matplotlib scipy pygccxml pyplusplus 
+RUN python3 -m venv /opt/venv && \
+    /opt/venv/bin/pip install --upgrade pip wheel && \
+    /opt/venv/bin/pip install \
+        eigenpy \
+        numpy \
+        castxml \
+        pybullet \
+        matplotlib \
+        scipy \
+        pygccxml \
+        pyplusplus
 
-# Install hpp-fcl
-RUN mkdir ./libs && cd ./libs && \
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+RUN echo 'source /opt/venv/bin/activate' >> /root/.bashrc
+
+# commits hash for reproducability
+ARG COAL_COMMIT=ff01445364a7b386e8e5c46ccd530ed9d9a8e8cf
+ARG RAPIDJSON_COMMIT=24b5e7a8b27f42fa16b96fc70aade9106cf7102f
+ARG OMPL_COMMIT=f2e2ec3de7698063fa18d9c5f676bc9dcefc0344
+ARG OMPL_COMMIT_before_fix=05aa440f896ee08b34e8ffe83c7b5a9db5434789
+
+# Install hpp-fcl (coal)
+RUN apt-get update && \
+    mkdir ./libs && cd ./libs && \
     git clone --recursive https://github.com/coal-library/coal  && \
     cd coal  && \
-    . /opt/ros/humble/setup.sh && \
+    git checkout --detach ${COAL_COMMIT} && \
+    git submodule update --init --recursive && \
+    . /opt/ros/jazzy/setup.sh && \
     rosdep init && \
     rosdep update && \
     rosdep install --from-paths ./ -y --ignore-src && \
@@ -84,12 +113,28 @@ RUN mkdir ./libs && cd ./libs && \
     -DCOAL_BACKWARD_COMPATIBILITY_WITH_HPP_FCL=True \ 
     -DCMAKE_C_FLAGS_DEBUG="-g -O0" \
     -DCMAKE_CXX_FLAGS_DEBUG="-g -O0"  && \
-    make -j4  && \
-    make install  && \
-    cd ../..  && \
+    make -j4 && \
+    cmake --install .  && \
+    cd ../..  
 
-    #install OMPL
-    git clone --recursive https://github.com/ompl/ompl.git && \
+
+    # Install RapidJSON
+RUN git clone --recursive https://github.com/Tencent/rapidjson.git && \
+    cd rapidjson && \
+    git checkout --detach ${RAPIDJSON_COMMIT} && \
+    git submodule update --init --recursive && \
+    mkdir build && \
+    cd build && \
+    cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=Debug \
+    -DCMAKE_C_FLAGS_DEBUG="-g -O0" \
+    -DCMAKE_CXX_FLAGS_DEBUG="-g -O0" && \ 
+    make -j4 && \ 
+    make install && \
+    cd ../.. && \
+    cd / 
+
+    #install OMPL 
+RUN git clone --recursive https://github.com/PathPlanning/ompl/tree/Strrt_before_memory_leak && \
     cd ompl && \
     mkdir -p build && \
     cd build && \
@@ -99,20 +144,31 @@ RUN mkdir ./libs && cd ./libs && \
     make -j4 && \ 
     make install update_bindings && \
     cd ../.. && \
-
-    # Install RapidJSON
-    git clone --recursive https://github.com/Tencent/rapidjson.git && \
-    cd rapidjson && \
-    mkdir build && \
+    #install new OMPL, where ST-RRT* memory leak is fixed (for research purposes) 
+    git clone --recursive https://github.com/ompl/ompl.git ompl-new && \
+    cd ompl-new && \
+    git checkout --detach ${OMPL_COMMIT} && \
+    git submodule update --init --recursive && \
+    mkdir -p build && \
     cd build && \
-    cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=Debug \
+    cmake .. -DCMAKE_INSTALL_PREFIX=/opt/ompl-new -DCMAKE_BUILD_TYPE=Debug \
     -DCMAKE_C_FLAGS_DEBUG="-g -O0" \
-    -DCMAKE_CXX_FLAGS_DEBUG="-g -O0" && \ 
-    make -j4 && \
-    make install && \
+    -DCMAKE_CXX_FLAGS_DEBUG="-g -O0"  && \
+    make -j4 && \ 
+    make install update_bindings && \
     cd ../.. && \
-
-    cd / 
+    git clone --recursive https://github.com/ompl/ompl.git ompl-old&& \
+    cd ompl-old && \
+    git checkout --detach ${OMPL_COMMIT_before_fix} && \
+    git submodule update --init --recursive && \
+    mkdir -p build && \
+    cd build && \
+    cmake .. -DCMAKE_INSTALL_PREFIX=/opt/ompl-old -DCMAKE_BUILD_TYPE=Debug \
+    -DCMAKE_C_FLAGS_DEBUG="-g -O0" \
+    -DCMAKE_CXX_FLAGS_DEBUG="-g -O0"  && \
+    make -j4 && \ 
+    make install update_bindings && \
+    cd ../.. 
 
 ENV NVIDIA_VISIBLE_DEVICES=all \
     NVIDIA_DRIVER_CAPABILITIES=graphics,utility,compute

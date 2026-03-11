@@ -39,4 +39,6 @@ drgbt_test.log
 
 tests/
 
+multiagent_tests*
+
 .venv/

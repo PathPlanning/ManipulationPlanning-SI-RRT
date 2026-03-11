@@ -3,8 +3,8 @@ services:
   mdp_debug:
     tty: true
     build: ./docker/mdp_debug
-    image: kaizernurik/mdp:debug
-    container_name: mdp_debug
+    image: kaizernurik/mdp:debug_reproducobility
+    container_name: mdp_debug_reproducobility
     security_opt:
       - seccomp:unconfined #optional
     environment:

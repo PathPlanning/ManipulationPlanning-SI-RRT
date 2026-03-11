@@ -1,7 +1,7 @@
 .PHONY: build_docker pull_docker start_docker
 
 build_docker:
-	docker-compose build --progress=plain
+	docker compose build --progress=plain
 
 pull_docker:
 	docker compose pull
@@ -25,16 +25,14 @@ clean_experiments_result:
 	python3 ./mass_test/clean_experiments.py
 
 build_planner_debug:
-	cd ./STRRT_Planner
-	make build_debug
-
-	cd ../MSIRRT
-	make build_debug
-
-	cd ../RPMPLv2
-	make build
+	cd ./STRRT_Planner && make build_debug
+	cd ./MSIRRT  && make build_debug
+	cd ./RPMPLv2  && make build
 	
-	cd ..
+clear_planners:
+	cd ./STRRT_Planner && make clean
+	cd ./MSIRRT  && make clean
+	cd ./RPMPLv2  && make clean
 
 mass_tests:
 	python3 ./mass_test/do_mass_test.py
