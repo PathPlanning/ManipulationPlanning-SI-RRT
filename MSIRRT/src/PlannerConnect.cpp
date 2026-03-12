@@ -637,7 +637,7 @@ std::vector<std::pair<MDP::MSIRRT::Vertex *, int>> MDP::MSIRRT::PlannerConnect::
     std::vector<std::pair<MDP::MSIRRT::Vertex *, int>> result;
 
     // Unsorted radius search
-    std::vector<std::pair<size_t, double>> indices_dists;
+    std::vector<nanoflann::ResultItem<size_t, double>> indices_dists;
     // search_params.sorted = false;
     nanoflann::RadiusResultSet<double, size_t> resultSet(radius, indices_dists);
 
