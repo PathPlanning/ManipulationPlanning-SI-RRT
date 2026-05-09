@@ -157,14 +157,15 @@ The dataset used in the original paper is available at: https://disk.yandex.ru/d
 If you use this repository in your research, please cite the following paper:
 
 ```bibtex
-@misc{kerimov2025safeintervalrandomizedpath,
-      title={Safe Interval Randomized Path Planning For Manipulators}, 
-      author={Nuraddin Kerimov and Aleksandr Onegin and Konstantin Yakovlev},
-      year={2025},
-      eprint={2412.19567},
-      archivePrefix={arXiv},
-      primaryClass={cs.RO},
-      url={https://arxiv.org/abs/2412.19567}, 
+@article{Kerimov_Onegin_Yakovlev_2025,
+   title={Safe Interval Randomized Path Planning For Manipulators}, 
+   volume={35}, 
+   url={https://ojs.aaai.org/index.php/ICAPS/article/view/36120}, DOI={10.1609/icaps.v35i1.36120}, 
+   number={1}, 
+   journal={Proceedings of the International Conference on Automated Planning and Scheduling}, author={Kerimov, Nuraddin and Onegin, Aleksandr and Yakovlev, Konstantin},
+   year={2025},
+   month={Sep.}, 
+   pages={213–217} 
 }
 ```
 
