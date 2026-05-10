@@ -103,28 +103,53 @@ ensure_ros_repo() {
 
   log "Adding ROS 2 apt repo"
   ${SUDO} apt-get update -y
-  ${SUDO} apt-get install -y software-properties-common curl ca-certificates gnupg
+  ${SUDO} apt-get install -y software-properties-common curl ca-certificates
   ${SUDO} add-apt-repository -y universe
 
-  local ros_apt_source_version
-  local ros_apt_source_json
   local ubuntu_codename
-  local deb
-
-  ros_apt_source_json="$(curl -fsSL https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest)"
-  ros_apt_source_version="$(printf '%s\n' "$ros_apt_source_json" | awk -F '"' '/tag_name/ {print $4; exit}')"
-  [[ -n "${ros_apt_source_version:-}" ]] || fail "Failed to determine ros2-apt-source version"
+  local pool_url
+  local pool_index
+  local deb_name
+  local deb_path
 
   # shellcheck disable=SC1091
   . /etc/os-release
   ubuntu_codename="${UBUNTU_CODENAME:-${VERSION_CODENAME}}"
-  deb="/tmp/ros2-apt-source_${ros_apt_source_version}.deb"
 
-  curl -fL -o "$deb" \
-    "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ros_apt_source_version}/ros2-apt-source_${ros_apt_source_version}.${ubuntu_codename}_all.deb"
+  pool_url="https://repo.ros2.org/ubuntu/main/pool/main/r/ros-apt-source/"
+  deb_path="/tmp/ros2-apt-source.deb"
 
-  ${SUDO} dpkg -i "$deb"
+  log "Finding latest ros2-apt-source for ${ubuntu_codename}"
+
+  pool_index="$(
+    curl -fsSL --retry 5 --retry-delay 2 --retry-all-errors "$pool_url"
+  )" || fail "Failed to read ROS package pool: ${pool_url}"
+
+  deb_name="$(
+    printf '%s\n' "$pool_index" \
+      | grep -oE "ros2-apt-source_[0-9][^\"'<> ]*~${ubuntu_codename}_all\.deb" \
+      | sort -V \
+      | tail -n1
+  )"
+
+  [[ -n "$deb_name" ]] || fail "Could not find ros2-apt-source package for Ubuntu ${ubuntu_codename}"
+
+  log "Downloading ${deb_name}"
+
+  curl -fL --retry 5 --retry-delay 2 --retry-all-errors \
+    -o "$deb_path" \
+    "${pool_url}${deb_name}" \
+    || fail "Failed to download ${pool_url}${deb_name}"
+
+  log "Installing ros2-apt-source"
+  ${SUDO} apt-get install -y "$deb_path"
+  rm -f "$deb_path"
+
+  log "Updating apt after ROS repo install"
   ${SUDO} apt-get update -y
+
+  apt-cache show "ros-${ROS_DISTRO}-urdf" >/dev/null 2>&1 \
+    || fail "ROS repo installed, but ros-${ROS_DISTRO}-urdf is still not visible to apt"
 }
 
 install_apt_packages() {
