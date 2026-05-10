@@ -3,21 +3,7 @@ set -Eeuo pipefail
 
 # Ubuntu 24.04 + ROS 2 Jazzy installer/builder for
 # STRRT_Planner, MSIRRT and RPMPLv2.
-#
-# Usage (from repo root):
-#   curl -fsSL https://YOUR-HOST/install.sh | bash
-#
-# Optional environment variables:
-#   REPO_DIR=/path/to/ManipulationPlanning-SI-RRT
-#   ROS_DISTRO=jazzy
-#   DEPS_ROOT=/opt/SIRRT_dependencies
-#   FORCE_REBUILD=1
-#   COAL_COMMIT=ff01445364a7b386e8e5c46ccd530ed9d9a8e8cf
-#   OMPL_LEGACY_REF=Strrt_before_memory_leak
-#   RAPIDJSON_COMMIT=24b5e7a8b27f42fa16b96fc70aade9106cf7102f
-#   OMPL_COMMIT=f2e2ec3de7698063fa18d9c5f676bc9dcefc0344
-#   OMPL_COMMIT_BEFORE_FIX=05aa440f896ee08b34e8ffe83c7b5a9db5434789
-#   NANOFLANN_COMMIT=9a653cb5f3b1322d0d5de711c16db636e9a95f5f
+
 
 ROS_DISTRO="${ROS_DISTRO:-jazzy}"
 DEPS_ROOT="${DEPS_ROOT:-/opt/SIRRT_dependencies}"
@@ -27,10 +13,8 @@ DEBUG_PREFIX="${DEPS_ROOT}/debug"
 FORCE_REBUILD="${FORCE_REBUILD:-0}"
 
 COAL_COMMIT="${COAL_COMMIT:-ff01445364a7b386e8e5c46ccd530ed9d9a8e8cf}"
-OMPL_LEGACY_REF="${OMPL_LEGACY_REF:-Strrt_before_memory_leak}"
 RAPIDJSON_COMMIT="${RAPIDJSON_COMMIT:-24b5e7a8b27f42fa16b96fc70aade9106cf7102f}"
-OMPL_COMMIT="${OMPL_COMMIT:-f2e2ec3de7698063fa18d9c5f676bc9dcefc0344}"
-OMPL_COMMIT_BEFORE_FIX="${OMPL_COMMIT_BEFORE_FIX:-05aa440f896ee08b34e8ffe83c7b5a9db5434789}"
+OMPL_COMMIT_2_0="${OMPL_COMMIT_2_0:-96b7b9c2c62f80570b5b93e03a95d56dea8410d9}"
 NANOFLANN_COMMIT="${NANOFLANN_COMMIT:-ba47cfcb127c3597d69196d87f5aa9ca8811b0a9}"
 
 RELEASE_C_FLAGS="${RELEASE_C_FLAGS:--march=native -mtune=native -O3 -DNDEBUG -fno-plt}"
@@ -426,29 +410,13 @@ install_source_deps() {
   ln -sf "${RELEASE_PREFIX}/lib/libcoal.so" "${RELEASE_PREFIX}/lib/libhpp-fcl.so"
   ln -sf "${DEBUG_PREFIX}/lib/libcoal.so" "${DEBUG_PREFIX}/lib/libhpp-fcl.so"
 
-  log "Building OMPL legacy"
+  log "Building OMPL 2.0"
   build_ompl_variant \
-    ompl-legacy \
-    https://github.com/PathPlanning/ompl.git \
-    "$OMPL_LEGACY_REF" \
+    ompl \
+    https://github.com/ompl/ompl.git \
+    "$OMPL_COMMIT_2_0" \
     "${RELEASE_PREFIX}" \
     "${DEBUG_PREFIX}"
-
-  log "Building OMPL new (fixed)"
-  build_ompl_variant \
-    ompl-new \
-    https://github.com/ompl/ompl.git \
-    "$OMPL_COMMIT" \
-    "${RELEASE_PREFIX}/ompl-new" \
-    "${DEBUG_PREFIX}/ompl-new"
-
-  log "Building OMPL old (before fix)"
-  build_ompl_variant \
-    ompl-old \
-    https://github.com/ompl/ompl.git \
-    "$OMPL_COMMIT_BEFORE_FIX" \
-    "${RELEASE_PREFIX}/ompl-old" \
-    "${DEBUG_PREFIX}/ompl-old"
 }
 
 install_ros_compat_shims() {
@@ -487,45 +455,6 @@ sirrt_use_debug() {
   export PKG_CONFIG_PATH=${DEBUG_PREFIX}/lib/pkgconfig:\${PKG_CONFIG_PATH:-}
 }
 
-sirrt_use_release_new() {
-  sirrt_use_release
-  export PATH=${RELEASE_PREFIX}/ompl-new/bin:\$PATH
-  export CPATH=${RELEASE_PREFIX}/ompl-new/include:\${CPATH:-}
-  export CPLUS_INCLUDE_PATH=${RELEASE_PREFIX}/ompl-new/include:\${CPLUS_INCLUDE_PATH:-}
-  export LIBRARY_PATH=${RELEASE_PREFIX}/ompl-new/lib:\${LIBRARY_PATH:-}
-  export LD_LIBRARY_PATH=${RELEASE_PREFIX}/ompl-new/lib:\${LD_LIBRARY_PATH:-}
-  export CMAKE_PREFIX_PATH=${RELEASE_PREFIX}/ompl-new:\${CMAKE_PREFIX_PATH:-}
-}
-
-sirrt_use_debug_new() {
-  sirrt_use_debug
-  export PATH=${DEBUG_PREFIX}/ompl-new/bin:\$PATH
-  export CPATH=${DEBUG_PREFIX}/ompl-new/include:\${CPATH:-}
-  export CPLUS_INCLUDE_PATH=${DEBUG_PREFIX}/ompl-new/include:\${CPLUS_INCLUDE_PATH:-}
-  export LIBRARY_PATH=${DEBUG_PREFIX}/ompl-new/lib:\${LIBRARY_PATH:-}
-  export LD_LIBRARY_PATH=${DEBUG_PREFIX}/ompl-new/lib:\${LD_LIBRARY_PATH:-}
-  export CMAKE_PREFIX_PATH=${DEBUG_PREFIX}/ompl-new:\${CMAKE_PREFIX_PATH:-}
-}
-
-sirrt_use_release_old() {
-  sirrt_use_release
-  export PATH=${RELEASE_PREFIX}/ompl-old/bin:\$PATH
-  export CPATH=${RELEASE_PREFIX}/ompl-old/include:\${CPATH:-}
-  export CPLUS_INCLUDE_PATH=${RELEASE_PREFIX}/ompl-old/include:\${CPLUS_INCLUDE_PATH:-}
-  export LIBRARY_PATH=${RELEASE_PREFIX}/ompl-old/lib:\${LIBRARY_PATH:-}
-  export LD_LIBRARY_PATH=${RELEASE_PREFIX}/ompl-old/lib:\${LD_LIBRARY_PATH:-}
-  export CMAKE_PREFIX_PATH=${RELEASE_PREFIX}/ompl-old:\${CMAKE_PREFIX_PATH:-}
-}
-
-sirrt_use_debug_old() {
-  sirrt_use_debug
-  export PATH=${DEBUG_PREFIX}/ompl-old/bin:\$PATH
-  export CPATH=${DEBUG_PREFIX}/ompl-old/include:\${CPATH:-}
-  export CPLUS_INCLUDE_PATH=${DEBUG_PREFIX}/ompl-old/include:\${CPLUS_INCLUDE_PATH:-}
-  export LIBRARY_PATH=${DEBUG_PREFIX}/ompl-old/lib:\${LIBRARY_PATH:-}
-  export LD_LIBRARY_PATH=${DEBUG_PREFIX}/ompl-old/lib:\${LD_LIBRARY_PATH:-}
-  export CMAKE_PREFIX_PATH=${DEBUG_PREFIX}/ompl-old:\${CMAKE_PREFIX_PATH:-}
-}
 
 export AMENT_TRACE_SETUP_FILES=\${AMENT_TRACE_SETUP_FILES:-}
 export AMENT_PYTHON_EXECUTABLE=\${AMENT_PYTHON_EXECUTABLE:-/usr/bin/python3}
@@ -543,10 +472,6 @@ EOF_ENV
 
   printf '%s\n' "${RELEASE_PREFIX}/lib" | ${SUDO} tee /etc/ld.so.conf.d/sirrt_dependencies_release.conf >/dev/null
   printf '%s\n' "${DEBUG_PREFIX}/lib" | ${SUDO} tee /etc/ld.so.conf.d/sirrt_dependencies_debug.conf >/dev/null
-  printf '%s\n' "${RELEASE_PREFIX}/ompl-new/lib" | ${SUDO} tee /etc/ld.so.conf.d/sirrt_dependencies_release_ompl_new.conf >/dev/null
-  printf '%s\n' "${DEBUG_PREFIX}/ompl-new/lib" | ${SUDO} tee /etc/ld.so.conf.d/sirrt_dependencies_debug_ompl_new.conf >/dev/null
-  printf '%s\n' "${RELEASE_PREFIX}/ompl-old/lib" | ${SUDO} tee /etc/ld.so.conf.d/sirrt_dependencies_release_ompl_old.conf >/dev/null
-  printf '%s\n' "${DEBUG_PREFIX}/ompl-old/lib" | ${SUDO} tee /etc/ld.so.conf.d/sirrt_dependencies_debug_ompl_old.conf >/dev/null
   ${SUDO} ldconfig
 }
 
@@ -558,10 +483,6 @@ Done.
 Installed prefixes:
   release:      ${RELEASE_PREFIX}
   debug:        ${DEBUG_PREFIX}
-  ompl new rel: ${RELEASE_PREFIX}/ompl-new
-  ompl new dbg: ${DEBUG_PREFIX}/ompl-new
-  ompl old rel: ${RELEASE_PREFIX}/ompl-old
-  ompl old dbg: ${DEBUG_PREFIX}/ompl-old
 
 To load environment in the current shell:
   source /etc/profile.d/sirrt_dependencies.sh
@@ -569,10 +490,7 @@ To load environment in the current shell:
 Profiles:
   sirrt_use_release
   sirrt_use_debug
-  sirrt_use_release_new
-  sirrt_use_debug_new
-  sirrt_use_release_old
-  sirrt_use_debug_old
+
 EOF_SUMMARY
 }
 
