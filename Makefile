@@ -16,10 +16,10 @@ stop_docker:
 	docker compose down
 
 enter_debug_docker:
-	docker exec -it mdp_debug /bin/bash 
+	docker exec -it mdp_debug_reproducibility /bin/bash 
 	
 enter_release_docker:
-	docker exec -it mdp_release /bin/bash 
+	docker exec -it mdp_release_reproducibility /bin/bash 
 
 clean_experiments_result:
 	python3 ./mass_test/clean_experiments.py

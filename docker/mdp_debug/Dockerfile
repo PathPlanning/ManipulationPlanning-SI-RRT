@@ -35,7 +35,7 @@ RUN apt install -y software-properties-common && \
     apt update && \
     apt upgrade -y && \
     apt install -y ros-jazzy-desktop && \
-    echo "source /opt/ros/jazzy/setup.bash" >> ~/.bashrc 
+    echo "source /opt/ros/jazzy/setup.bash" >> /root/.bashrc 
 
 
 
@@ -94,6 +94,7 @@ ARG COAL_COMMIT=ff01445364a7b386e8e5c46ccd530ed9d9a8e8cf
 ARG RAPIDJSON_COMMIT=24b5e7a8b27f42fa16b96fc70aade9106cf7102f
 ARG OMPL_COMMIT=f2e2ec3de7698063fa18d9c5f676bc9dcefc0344
 ARG OMPL_COMMIT_before_fix=05aa440f896ee08b34e8ffe83c7b5a9db5434789
+ARG NANOFLANN_COMMIT=ba47cfcb127c3597d69196d87f5aa9ca8811b0a9
 
 # Install hpp-fcl (coal)
 RUN apt-get update && \
@@ -127,14 +128,17 @@ RUN git clone --recursive https://github.com/Tencent/rapidjson.git && \
     cd build && \
     cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=Debug \
     -DCMAKE_C_FLAGS_DEBUG="-g -O0" \
-    -DCMAKE_CXX_FLAGS_DEBUG="-g -O0" && \ 
+    -DCMAKE_CXX_FLAGS_DEBUG="-g -O0" \
+    -DRAPIDJSON_BUILD_DOC=OFF \
+    -DRAPIDJSON_BUILD_EXAMPLES=OFF \
+    -DRAPIDJSON_BUILD_TESTS=OFF && \ 
     make -j4 && \ 
     make install && \
     cd ../.. && \
     cd / 
 
     #install OMPL 
-RUN git clone --recursive https://github.com/PathPlanning/ompl/tree/Strrt_before_memory_leak && \
+RUN git clone -b Strrt_before_memory_leak --recursive https://github.com/PathPlanning/ompl.git && \
     cd ompl && \
     mkdir -p build && \
     cd build && \
@@ -142,7 +146,7 @@ RUN git clone --recursive https://github.com/PathPlanning/ompl/tree/Strrt_before
     -DCMAKE_C_FLAGS_DEBUG="-g -O0" \
     -DCMAKE_CXX_FLAGS_DEBUG="-g -O0"  && \
     make -j4 && \ 
-    make install update_bindings && \
+    make install && \
     cd ../.. && \
     #install new OMPL, where ST-RRT* memory leak is fixed (for research purposes) 
     git clone --recursive https://github.com/ompl/ompl.git ompl-new && \
@@ -155,7 +159,7 @@ RUN git clone --recursive https://github.com/PathPlanning/ompl/tree/Strrt_before
     -DCMAKE_C_FLAGS_DEBUG="-g -O0" \
     -DCMAKE_CXX_FLAGS_DEBUG="-g -O0"  && \
     make -j4 && \ 
-    make install update_bindings && \
+    make install && \
     cd ../.. && \
     git clone --recursive https://github.com/ompl/ompl.git ompl-old&& \
     cd ompl-old && \
@@ -167,7 +171,7 @@ RUN git clone --recursive https://github.com/PathPlanning/ompl/tree/Strrt_before
     -DCMAKE_C_FLAGS_DEBUG="-g -O0" \
     -DCMAKE_CXX_FLAGS_DEBUG="-g -O0"  && \
     make -j4 && \ 
-    make install update_bindings && \
+    make install && \
     cd ../.. 
 
 ENV NVIDIA_VISIBLE_DEVICES=all \
@@ -176,6 +180,27 @@ ENV NVIDIA_VISIBLE_DEVICES=all \
 RUN ln -s /usr/local/lib/libcoal.so /usr/local/lib/libhpp-fcl.so
 
 RUN apt install -y blender
+
+#install nanoflann
+RUN git clone https://github.com/jlblancoc/nanoflann.git && \
+    cd ./nanoflann && \
+    git checkout --detach ${NANOFLANN_COMMIT} && \
+    git submodule update --init --recursive && \
+    mkdir -p build && \
+    cd build && \
+    cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=Debug \
+    -DCMAKE_C_FLAGS_DEBUG="-g -O0" \
+    -DCMAKE_CXX_FLAGS_DEBUG="-g -O0"  \
+    -DNANOFLANN_BUILD_EXAMPLES=OFF \
+    -DNANOFLANN_BUILD_TESTS=OFF  && \
+    make -j4 && \ 
+    make install && \
+    cd ../.. 
+
+# fix linker and header errors
+RUN  ln -s /opt/ros/jazzy/lib/liburdf.so /usr/local/lib/liburdf.so && \
+    ln -s /opt/ros/jazzy/lib/libkdl_parser.so /usr/local/lib/libkdl_parser.so && \
+    echo "export CPLUS_INCLUDE_PATH=$CPLUS_INCLUDE_PATH:/opt/ros/jazzy/include/urdf:/opt/ros/jazzy/include/urdfdom_headers/:/opt/ros/jazzy/include/kdl_parser" >> /root/.bashrc
 
 SHELL ["/bin/bash", "-o"]
 

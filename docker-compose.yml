@@ -3,8 +3,8 @@ services:
   mdp_debug:
     tty: true
     build: ./docker/mdp_debug
-    image: kaizernurik/mdp:debug_reproducobility
-    container_name: mdp_debug_reproducobility
+    image: kaizernurik/mdp:debug_reproducibility
+    container_name: mdp_debug_reproducibility
     security_opt:
       - seccomp:unconfined #optional
     environment:
@@ -21,38 +21,55 @@ services:
     runtime: "nvidia"
     devices:
       - /dev/dri:/dev/dri
-  # mdp_release:
-  #   build: ./docker/mdp_release
-  #   image: kaizernurik/mdp:release
-  #   container_name: mdp_release
-  #   tty: true
-  #   security_opt:
-  #     - seccomp:unconfined #optional
-  #   environment:
-  #     - PUID=1000
-  #     - PGID=1000
-  #     - TZ=Etc/UTC
-  #     - SUBFOLDER=/ #optional
-  #     - NVIDIA_VISIBLE_DEVICES=all
-  #     - DISPLAY=:0 
-  #   volumes:
-  #     - ./:/app
-  #     - $HOME/.Xauthority:/root/.Xauthority:rw
-  #     - /mnt/wslg :/mnt/wslg
-  #   ports:
-  #     - 3000:3000
-  #     - 3001:3001
-  #     - 6000:6000
-  #     - 6001:6001
-  #   runtime: "nvidia"
-  #   network_mode: host
-  #   deploy:
-  #       resources:
-  #         reservations:
-  #           devices:
-  #             - driver: nvidia
-  #               count: all
-  #               capabilities: [gpu]
+
+  planners:
+    image: kaizernurik/mdp:release_reproducibility_minimal
+    build:
+      context: .
+      dockerfile: ./docker/mdp_release_minimal/Dockerfile
+      target: runtime
+      args:
+        ROS_DISTRO: jazzy
+        UBUNTU_CODENAME: noble
+        COAL_COMMIT: ff01445364a7b386e8e5c46ccd530ed9d9a8e8cf
+      cache_from:
+        - type=registry,ref=kaizernurik/mdp-planners:buildcache
+      cache_to:
+        - type=registry,ref=kaizernurik/mdp-planners:buildcache,mode=max
+      platforms:
+        - linux/amd64
+  mdp_release:
+    build: ./docker/mdp_release
+    image: kaizernurik/mdp:release_reproducibility
+    container_name: mdp_release_reproducibility
+    tty: true
+    security_opt:
+      - seccomp:unconfined #optional
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+      - SUBFOLDER=/ #optional
+      - NVIDIA_VISIBLE_DEVICES=all
+      - DISPLAY=:0 
+    volumes:
+      - ./:/app
+      - $HOME/.Xauthority:/root/.Xauthority:rw
+      - /mnt/wslg :/mnt/wslg
+    ports:
+      - 3000:3000
+      - 3001:3001
+      - 6000:6000
+      - 6001:6001
+    runtime: "nvidia"
+    network_mode: host
+    deploy:
+        resources:
+          reservations:
+            devices:
+              - driver: nvidia
+                count: all
+                capabilities: [gpu]
   # blender:
   #   build: ./docker/blender
   #   image: qqwe
