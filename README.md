@@ -109,8 +109,8 @@ Follow these steps to quickly get started with the framework:
 1. **Download the test dataset**:
 
    ```bash
-   wget https://disk.yandex.ru/d/-73LOGO5kOSYuA -O dataset.zip
-   unzip dataset.zip -d ./mass_test/tests
+   url='https://disk.yandex.ru/d/-73LOGO5kOSYuA'; curl -fL -o dataset.tar.gz "$(curl -fsSLG --data-urlencode "public_key=$url" 'https://cloud-api.yandex.net/v1/disk/public/resources/download' | python3 -c 'import sys,json; print(json.load(sys.stdin)["href"])')"
+   tar -xvf ./dataset.tar.gz
    ```
 
 2. **Configure parallel execution**:

@@ -139,7 +139,7 @@ ensure_ros_repo() {
 install_apt_packages() {
   local pkgs=(
     ca-certificates curl git make build-essential cmake ninja-build pkg-config file
-    locales software-properties-common lsb-release
+    locales software-properties-common lsb-release unzip jq
     python3 python3-dev python3-pip python3-venv python3-rosdep
     swig castxml
     qhull-bin libqhull-dev
