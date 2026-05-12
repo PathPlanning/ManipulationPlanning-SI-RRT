@@ -367,7 +367,7 @@ std::vector<MDP::RobotObstacleFCL::JointCollisionObject> MDP::RobotObstacleFCL::
         }
     }
 
-    // result.erase(result.begin(), result.begin() + 2); // Delete base links models
+    result.erase(result.begin(), result.begin() + 2); // Delete base links models
 
     // assert(result1.size() == result.size());
 
