@@ -852,15 +852,16 @@ bool MDP::MSIRRT::PlannerConnect::is_collision_state(MDP::MSIRRT::Vertex::Vertex
 bool MDP::MSIRRT::PlannerConnect::is_collision_motion(const MDP::MSIRRT::Vertex::VertexCoordType &start_coords, const MDP::MSIRRT::Vertex::VertexCoordType &end_coords, double &start_time, double &end_time)
 {
 
-    if (start_time > end_time)
+    if (start_time >= end_time)
     {
         // std::cout << "start_time > end_time" << std::endl;
         return true;
     }
     MDP::MSIRRT::Vertex::VertexCoordType dir_vector = end_coords - start_coords;
-    if ((dir_vector.norm() * ((double)this->scene_task.fps) / ((double)(end_time - start_time))) > this->vmax)
+    if ((dir_vector.norm() * ((double)this->scene_task.fps) / ((double)(end_time - start_time))) > (this->vmax+0.001)) // We need 0.001 to fix floating point comparison errors.
     {
-        // std::cout << "((dir_vector.norm() * ((double)this->scene_task.fps) / ((double)(end_time - start_time))) >= this->vmax)" << std::endl;
+        std::cout << "((dir_vector.norm() * ((double)this->scene_task.fps) / ((double)(end_time - start_time))) >= this->vmax)" << std::endl;
+        std::cout <<std::fixed <<std::setprecision(15) <<(dir_vector.norm() * ((double)this->scene_task.fps) / ((double)(end_time - start_time)))<< " "<< dir_vector.norm() << " " << (double)this->scene_task.fps << " " << ((double)(end_time - start_time)) << " "<<std::fixed <<std::setprecision(15)<< this->vmax  << std::endl;
         return true;
     }
 
