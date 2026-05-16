@@ -14,7 +14,7 @@ import argparse
 import os
 
 delete_videos = False
-delete_logs = False
+delete_logs = True
 
 test_dirs = [f"./mass_test/tests/{i}_spheres" for i in range(0,301,20)]
 test_dirs[0] ="./mass_test/tests/1_spheres"
@@ -34,7 +34,8 @@ def main() -> None:
                         print(os.path.join(test_dir,test_number_dir,file))
                         os.remove(os.path.join(test_dir,test_number_dir,file))
                 if delete_logs:
-                    if ('MSIRRT_planner_logs' in file or 'DRGBT_planner_logs' in file or 'STRRT*_planner_logs' in file) and (file[-5:]=='.json'):
+                    if ('MSIRRT_planner_logs' in file) and (file[-5:]=='.json'):
+                        
                         print(os.path.join(test_dir,test_number_dir,file))
                         os.remove(os.path.join(test_dir,test_number_dir,file))
     

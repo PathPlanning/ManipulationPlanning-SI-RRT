@@ -9,7 +9,7 @@ import argparse
 import os
 import random
 from concurrent.futures import ProcessPoolExecutor
-NUM_CPUS = 32
+NUM_CPUS = 128
 
 def parse_my_args(argv=None):
     PARSER = argparse.ArgumentParser()
@@ -55,7 +55,7 @@ def main( path_to_strrt_config_json: str) -> None:
             for test_number_dir in test_numbers:
                 for i in range(10):
                 #     print("----------")
-                    futures.append(executor.submit(plan_strrt, os.path.join(test_dir,test_number_dir),path_to_strrt_config_json,'scene_task.json',random.getrandbits(32)))
+                    # futures.append(executor.submit(plan_strrt, os.path.join(test_dir,test_number_dir),path_to_strrt_config_json,'scene_task.json',random.getrandbits(32)))
                     # futures.append(executor.submit(plan_drgbt, os.path.join(test_dir,test_number_dir),path_to_strrt_config_json,'scene_task.json',random.getrandbits(32)))
                     futures.append(executor.submit(plan_msirrt, os.path.join(test_dir,test_number_dir),path_to_strrt_config_json,'scene_task.json',random.getrandbits(32)))
     

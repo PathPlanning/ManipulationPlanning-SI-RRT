@@ -38,7 +38,7 @@ build*/
 *_planner_logs_*
 drgbt_test.log
 
-tests/
+tests*/
 
 .venv/
 
