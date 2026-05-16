@@ -71,6 +71,7 @@ namespace MDP::MSIRRT
         double goal_bias = 0.4;
         double vmax = 3.14;
         double planner_range;
+        double radius_factor = 4.0;
         bool goal_reached = false;
         std::pair<MDP::MSIRRT::Vertex *,MDP::MSIRRT::Vertex *> goal_nodes = std::pair<MDP::MSIRRT::Vertex *,MDP::MSIRRT::Vertex *>(nullptr,nullptr);
         MDP::MSIRRT::Vertex * finish_node;

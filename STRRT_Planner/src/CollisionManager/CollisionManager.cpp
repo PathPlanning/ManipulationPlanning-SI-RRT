@@ -114,37 +114,59 @@ MDP::CollisionManager::CollisionManager(const MDP::ConfigReader::SceneTask _scen
     this->frames_and_ids = new std::pair<int, int>[  scene_task.frame_count *(collision_object_count + this->robot_obstacle_all_joint_count)];
 
 
-    //TODO: adaptise for new this->frames_and_ids structure
-    // for (int obstacle_id = 0; obstacle_id < collision_object_count; obstacle_id++)
-    // {
-    //     MDP::ObjectObstacleFCL *obstacle = this->obstacles[obstacle_id];
-    //     coal::ShapeBase *obj = obstacle->get_collision_object();
+    // Register scene obstacles into the cross-frame broadphase used by
+    // get_safe_intervals. For static obstacles we emit one entry covering the
+    // whole frame range; for dynamic obstacles we compress consecutive frames
+    // where position/rotation don't change (same scheme as robot obstacles).
+    {
+        const int total_obs_count = collision_object_count + this->robot_obstacle_all_joint_count;
+        for (int obstacle_id = 0; obstacle_id < collision_object_count; obstacle_id++)
+        {
+            MDP::ObjectObstacleFCL *obstacle = this->obstacles[obstacle_id];
+            coal::ShapeBase *obj = obstacle->get_collision_object();
 
-    //     for (int frame = 0; frame < this->frame_count; frame++)
-    //     {
+            auto emit_window = [&](int starting_static_frame, int ending_static_frame,
+                                    const MDP::ObstacleCoordinate &obj_position) {
+                this->all_spheres.push_back(new coal::CollisionObject(
+                    std::shared_ptr<coal::CollisionGeometry>(obj->clone()),
+                    obj_position.rotation.toRotationMatrix(),
+                    obj_position.pos));
+                auto *slot = this->frames_and_ids_safe_interval
+                             + starting_static_frame * total_obs_count + obstacle_id;
+                slot->first = std::pair<int, int>(starting_static_frame, ending_static_frame);
+                slot->second = obstacle_id;
+                this->all_spheres.back()->setUserData(slot);
+                this->all_spheres.back()->collisionGeometry()->computeLocalAABB();
+            };
 
-    //         if (obstacle->get_is_static())
-    //         {
-    //             MDP::ObstacleCoordinate obj_position = obstacle->get_position(0);
-
-    //             this->all_spheres.push_back(new coal::CollisionObject(std::shared_ptr<coal::CollisionGeometry>(obj->clone()), obj_position.rotation.toRotationMatrix(), obj_position.pos));
-    //             this->frames_and_ids[frame + scene_task.frame_count * obstacle_id].first = frame;
-    //             this->frames_and_ids[frame + scene_task.frame_count * obstacle_id].second = obstacle_id;
-    //             this->all_spheres.back()->setUserData(this->frames_and_ids + frame + scene_task.frame_count * obstacle_id);
-    //             this->all_spheres.back()->collisionGeometry()->computeLocalAABB();
-    //         }
-    //         else
-    //         {
-    //             MDP::ObstacleCoordinate obj_position = obstacle->get_position(frame);
-
-    //             this->all_spheres.push_back(new coal::CollisionObject(std::shared_ptr<coal::CollisionGeometry>(obj->clone()), obj_position.rotation.toRotationMatrix(), obj_position.pos));
-    //             this->frames_and_ids[frame + scene_task.frame_count * obstacle_id].first = frame;
-    //             this->frames_and_ids[frame + scene_task.frame_count * obstacle_id].second = obstacle_id;
-    //             this->all_spheres.back()->setUserData(this->frames_and_ids + frame + scene_task.frame_count * obstacle_id);
-    //             this->all_spheres.back()->collisionGeometry()->computeLocalAABB();
-    //         }
-    //     }
-    // }
+            if (obstacle->get_is_static())
+            {
+                emit_window(0, this->frame_count - 1, obstacle->get_position(0));
+            }
+            else
+            {
+                for (int frame = 0; frame < this->frame_count; frame++)
+                {
+                    int starting_static_frame = frame;
+                    int ending_static_frame = frame;
+                    MDP::ObstacleCoordinate base_pos = obstacle->get_position(frame);
+                    for (int sf = frame + 1; sf < this->frame_count; sf++)
+                    {
+                        MDP::ObstacleCoordinate p = obstacle->get_position(sf);
+                        if (p.x != base_pos.x || p.y != base_pos.y || p.z != base_pos.z
+                            || p.quat_x != base_pos.quat_x || p.quat_y != base_pos.quat_y
+                            || p.quat_z != base_pos.quat_z || p.quat_w != base_pos.quat_w)
+                        {
+                            break;
+                        }
+                        ending_static_frame = sf;
+                    }
+                    emit_window(starting_static_frame, ending_static_frame, base_pos);
+                    frame = ending_static_frame;
+                }
+            }
+        }
+    }
 
     int total_joint_id = 0;
     for (int obstacle_robot_id = 0; obstacle_robot_id < this->robot_obstacles.size(); obstacle_robot_id++)
