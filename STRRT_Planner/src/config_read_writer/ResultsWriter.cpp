@@ -63,7 +63,7 @@ void MDP::ResultsWriter::save_json(const std::string file_name, rapidjson::Value
     }
     else if (this->planner_type == MDP::ResultsWriter::PlannerType::MSIRRT)
     {
-        planner_type_str = "MSIRRT";
+        planner_type_str = "MSIRRT_jump";
     }
 
     data_to_export.AddMember("planner_type", rapidjson::StringRef(planner_type_str.c_str()), allocator);

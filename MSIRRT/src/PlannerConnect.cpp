@@ -84,6 +84,15 @@ MDP::MSIRRT::PlannerConnect::PlannerConnect(MDP::ConfigReader::SceneTask scene_t
         double v = std::atof(env);
         if (v > 0) this->radius_factor = v;
     }
+    // MSIRRT_MAX_DEP_TIME: hysteresis frames around the static-obstacle "jump"
+    // trigger in set_parent. 0 = jump aggressively on first collision (MSIRRT_jump
+    // baseline). Higher values delay the jump and try more departure_time values
+    // first — denser scenes may prefer this to avoid noisy get_safe_intervals
+    // calls. Negative values disabled.
+    if (const char *env = std::getenv("MSIRRT_MAX_DEP_TIME")) {
+        int v = std::atoi(env);
+        if (v >= 0) this->max_dep_time_for_safe_int_check = v;
+    }
 }
 // destructor
 MDP::MSIRRT::PlannerConnect::~PlannerConnect()
@@ -456,8 +465,8 @@ std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::set_parent(MDP::
 
                 double time_to_node = (coord_rand - candidate_node.first->coords).norm() * (double)this->scene_task.fps / this->vmax;
 
-                int max_dep_time_for_safe_int_check = 50;
-                int col_coord_safe_int_first = std::max(candidate_node.first->arrival_time, (double)safe_int.first - time_to_node) +max_dep_time_for_safe_int_check;
+                int max_dep_time_for_safe_int_check = this->max_dep_time_for_safe_int_check;
+                int col_coord_safe_int_first = std::max(candidate_node.first->arrival_time, (double)safe_int.first - time_to_node) + max_dep_time_for_safe_int_check;
                 int col_coord_safe_int_second = col_coord_safe_int_first-1;
 
                 // std::cout<<"candidate_node: "<<candidate_node.first->arrival_time<<" "<<candidate_node.first->safe_interval.first<<" "<<candidate_node.first->safe_interval.second<<std::endl;
@@ -528,90 +537,90 @@ std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::set_parent(MDP::
                     }
 
             
-                    // else if((departure_time > col_coord_safe_int_second || departure_time > col_coord_safe_int_first+max_dep_time_for_safe_int_check ) && departure_time < arrival_time)
-                    // // else if(departure_time < arrival_time)
-                    //    {
-                    //         std::vector<double> vec_collision_manager(collision_coord.data(), collision_coord.data() + collision_coord.rows() * collision_coord.cols());
-                    //         std::vector<std::pair<int, int>> collision_coord_safe_intervals = this->collision_manager.get_safe_intervals(vec_collision_manager);
-                    //         if (collision_coord_safe_intervals.size()==0)
-                    //         {
-                    //             // safe_interval_ind++;
-                    //             this->was_static_obstacle = true;
-                    //             break;
-                    //         }
-                    //         // if does not overlap, break,
-                    //         // if overlaps, set departure time according to lowest time at safe interval
-                    //         bool no_overlaps_found = true;
-                    //         for (const std::pair<int, int>& collision_safe_int:collision_coord_safe_intervals){
-                    //             //we assume, that safe_intervals are sorted by time.
-                    //             double time_from_candidate_to_collision =  (candidate_node.first->coords - collision_coord).norm() * (double)this->scene_task.fps / this->vmax;
-                    //             double time_collision_to_rand =  (coord_rand - collision_coord).norm() * (double)this->scene_task.fps / this->vmax;
-                    //             // assert(std::abs(time_from_candidate_to_collision+time_collision_to_rand  - time_to_node)<0.1 );
-                    //             // projected to coll. coordinate parent low bound (departure time)
-                    //             double pr_par_low = departure_time + time_from_candidate_to_collision;
-                    //             // projected to coll. coordinate parent high bound
-                    //             double pr_par_high = candidate_node.first->safe_interval.second + time_from_candidate_to_collision;
+                    else if((departure_time > col_coord_safe_int_second || departure_time > col_coord_safe_int_first+max_dep_time_for_safe_int_check ) && departure_time < arrival_time)
+                    // else if(departure_time < arrival_time)
+                       {
+                            std::vector<double> vec_collision_manager(collision_coord.data(), collision_coord.data() + collision_coord.rows() * collision_coord.cols());
+                            std::vector<std::pair<int, int>> collision_coord_safe_intervals = this->collision_manager.get_safe_intervals(vec_collision_manager);
+                            if (collision_coord_safe_intervals.size()==0)
+                            {
+                                // safe_interval_ind++;
+                                this->was_static_obstacle = true;
+                                break;
+                            }
+                            // if does not overlap, break,
+                            // if overlaps, set departure time according to lowest time at safe interval
+                            bool no_overlaps_found = true;
+                            for (const std::pair<int, int>& collision_safe_int:collision_coord_safe_intervals){
+                                //we assume, that safe_intervals are sorted by time.
+                                double time_from_candidate_to_collision =  (candidate_node.first->coords - collision_coord).norm() * (double)this->scene_task.fps / this->vmax;
+                                double time_collision_to_rand =  (coord_rand - collision_coord).norm() * (double)this->scene_task.fps / this->vmax;
+                                // assert(std::abs(time_from_candidate_to_collision+time_collision_to_rand  - time_to_node)<0.1 );
+                                // projected to coll. coordinate parent low bound (departure time)
+                                double pr_par_low = departure_time + time_from_candidate_to_collision;
+                                // projected to coll. coordinate parent high bound
+                                double pr_par_high = candidate_node.first->safe_interval.second + time_from_candidate_to_collision;
 
-                    //             // projected to coll. coordinate random coord low bound
-                    //             double pr_ran_low = safe_int.first - time_collision_to_rand;
-                    //             // projected to coll. coordinate random coord high bound
-                    //             double pr_ran_high = safe_int.second - time_collision_to_rand;
+                                // projected to coll. coordinate random coord low bound
+                                double pr_ran_low = safe_int.first - time_collision_to_rand;
+                                // projected to coll. coordinate random coord high bound
+                                double pr_ran_high = safe_int.second - time_collision_to_rand;
 
-                    //             //ignore, if safe int is lower than dep time
-                    //             if(collision_safe_int.second < pr_par_low){
-                    //                 continue;
-                    //             }
-                    //             //stop iterating, if safe int is higher, than max dep time
-                    //             if(collision_safe_int.first > std::min(pr_par_high,pr_ran_high)){
-                    //                 break;
-                    //             }
+                                //ignore, if safe int is lower than dep time
+                                if(collision_safe_int.second < pr_par_low){
+                                    continue;
+                                }
+                                //stop iterating, if safe int is higher, than max dep time
+                                if(collision_safe_int.first > std::min(pr_par_high,pr_ran_high)){
+                                    break;
+                                }
 
-                    //             // get overlapping between parent and col
+                                // get overlapping between parent and col
 
-                    //             double overlap_par_col_low = std::max(pr_par_low,(double)collision_safe_int.first);
-                    //             double overlap_par_col_high = std::min(pr_par_high,(double)collision_safe_int.second);
-                    //             if (overlap_par_col_low > overlap_par_col_high){
-                    //                 continue;
-                    //             }
+                                double overlap_par_col_low = std::max(pr_par_low,(double)collision_safe_int.first);
+                                double overlap_par_col_high = std::min(pr_par_high,(double)collision_safe_int.second);
+                                if (overlap_par_col_low > overlap_par_col_high){
+                                    continue;
+                                }
 
-                    //             // get resulting overlapping with random coord safe_int
+                                // get resulting overlapping with random coord safe_int
 
-                    //             double result_overlap_low = std::max(overlap_par_col_low,pr_ran_low);
-                    //             double result_overlap_high = std::min(overlap_par_col_high,pr_ran_high);
-                    //             if (result_overlap_low > result_overlap_high){
-                    //                 continue;
-                    //             }
+                                double result_overlap_low = std::max(overlap_par_col_low,pr_ran_low);
+                                double result_overlap_high = std::min(overlap_par_col_high,pr_ran_high);
+                                if (result_overlap_low > result_overlap_high){
+                                    continue;
+                                }
 
-                    //             no_overlaps_found = false;
+                                no_overlaps_found = false;
 
-                    //             // std::cout<<departure_time<<" "<<candidate_node.first->safe_interval.second <<" "<<pr_par_low<<" "<<pr_par_high<<std::endl;
-                    //             // std::cout<<safe_int.first<<" "<<safe_int.second <<" "<<pr_ran_low<<" "<<pr_ran_high<<std::endl;
-                    //             // std::cout<<collision_safe_int.first<<" "<<collision_safe_int.second<<" "<<time_from_candidate_to_collision<<" "<<time_collision_to_rand<<std::endl;
+                                // std::cout<<departure_time<<" "<<candidate_node.first->safe_interval.second <<" "<<pr_par_low<<" "<<pr_par_high<<std::endl;
+                                // std::cout<<safe_int.first<<" "<<safe_int.second <<" "<<pr_ran_low<<" "<<pr_ran_high<<std::endl;
+                                // std::cout<<collision_safe_int.first<<" "<<collision_safe_int.second<<" "<<time_from_candidate_to_collision<<" "<<time_collision_to_rand<<std::endl;
 
-                    //             // assert(result_overlap_low >=pr_par_low);
-                    //             // std::cout<<result_overlap_low-time_from_candidate_to_collision << " "<< departure_time<<std::endl;
-                    //             // assert(result_overlap_low-time_from_candidate_to_collision >=departure_time);
-                    //             // std::cout<<result_overlap_low-time_from_candidate_to_collision <<" "<<result_overlap_high-time_from_candidate_to_collision<< " "<< std::min((double)candidate_node.first->safe_interval.second, (double)safe_int.second - time_to_node)<<std::endl;
-                    //             // assert(result_overlap_low-time_from_candidate_to_collision <=std::min((double)candidate_node.first->safe_interval.second, (double)safe_int.second - time_to_node));
-                    //             // if (!is_collision_motion(start_coords, collision_coord, departure_time, result_overlap_low))
-                    //             // {
-                    //             //     this->current_tree->add_vertex(collision_coord, safe_int, candidate_node.first, departure_time, result_overlap_low);
-                    //             //     // added_vertices.push_back(this->current_tree->array_of_vertices.back());
-                    //             // }
-                    //             if ((result_overlap_low - time_from_candidate_to_collision - departure_time)>=1)
-                    //             {
-                    //                 departure_time = result_overlap_low - time_from_candidate_to_collision-1 ;
-                    //                 col_coord_safe_int_first = departure_time+1;
-                    //                 col_coord_safe_int_second = result_overlap_high- time_from_candidate_to_collision;
-                    //             }
+                                // assert(result_overlap_low >=pr_par_low);
+                                // std::cout<<result_overlap_low-time_from_candidate_to_collision << " "<< departure_time<<std::endl;
+                                // assert(result_overlap_low-time_from_candidate_to_collision >=departure_time);
+                                // std::cout<<result_overlap_low-time_from_candidate_to_collision <<" "<<result_overlap_high-time_from_candidate_to_collision<< " "<< std::min((double)candidate_node.first->safe_interval.second, (double)safe_int.second - time_to_node)<<std::endl;
+                                // assert(result_overlap_low-time_from_candidate_to_collision <=std::min((double)candidate_node.first->safe_interval.second, (double)safe_int.second - time_to_node));
+                                // if (!is_collision_motion(start_coords, collision_coord, departure_time, result_overlap_low))
+                                // {
+                                //     this->current_tree->add_vertex(collision_coord, safe_int, candidate_node.first, departure_time, result_overlap_low);
+                                //     // added_vertices.push_back(this->current_tree->array_of_vertices.back());
+                                // }
+                                if ((result_overlap_low - time_from_candidate_to_collision - departure_time)>=1)
+                                {
+                                    departure_time = result_overlap_low - time_from_candidate_to_collision-1 ;
+                                    col_coord_safe_int_first = departure_time+1;
+                                    col_coord_safe_int_second = result_overlap_high- time_from_candidate_to_collision;
+                                }
 
-                    //             }
-                    //         if (no_overlaps_found){
-                    //             // safe_interval_ind++;
-                    //             this->was_static_obstacle = true;
-                    //             break;
-                    //         }
-                    //     }
+                                }
+                            if (no_overlaps_found){
+                                // safe_interval_ind++;
+                                this->was_static_obstacle = true;
+                                break;
+                            }
+                        }
                 }
                 if (found_parent)
                 {
@@ -672,8 +681,8 @@ std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::set_parent(MDP::
             {
                 // std::cout<<"candidate_node: "<<candidate_node.first->arrival_time<<" "<<candidate_node.first->safe_interval.first<<" "<<candidate_node.first->safe_interval.second<<std::endl;
                 double time_to_node = (coord_rand - candidate_node.first->coords).norm() * (double)this->scene_task.fps / this->vmax;
-                
-                int max_dep_time_for_safe_int_check = 50;
+
+                int max_dep_time_for_safe_int_check = this->max_dep_time_for_safe_int_check;
                 int col_coord_safe_int_second = std::min(candidate_node.first->arrival_time, (double)safe_int.second + time_to_node)-max_dep_time_for_safe_int_check;
                 int col_coord_safe_int_first = col_coord_safe_int_second-1;
 
@@ -735,86 +744,86 @@ std::vector<MDP::MSIRRT::Vertex *> MDP::MSIRRT::PlannerConnect::set_parent(MDP::
                         break;
                     }
 
-                    // else if((departure_time < col_coord_safe_int_first || departure_time < col_coord_safe_int_second-max_dep_time_for_safe_int_check ) && departure_time > arrival_time)
-                    // // else if(departure_time > arrival_time)
-                    //     {
+                    else if((departure_time < col_coord_safe_int_first || departure_time < col_coord_safe_int_second-max_dep_time_for_safe_int_check ) && departure_time > arrival_time)
+                    // else if(departure_time > arrival_time)
+                        {
                             
-                    //         std::vector<std::pair<int, int>> collision_coord_safe_intervals = this->collision_manager.get_safe_intervals(std::vector<double>(collision_coord.data(), collision_coord.data() + collision_coord.rows() * collision_coord.cols()));
-                    //         if (collision_coord_safe_intervals.size()==0)
-                    //         {
-                    //             this->was_static_obstacle = true;
-                    //             break;
-                    //         }
-                    //         // if does not overlap, break,
-                    //         // if overlaps, set departure time according to lowest time at safe interval
-                    //         bool no_overlaps_found = true;
+                            std::vector<std::pair<int, int>> collision_coord_safe_intervals = this->collision_manager.get_safe_intervals(std::vector<double>(collision_coord.data(), collision_coord.data() + collision_coord.rows() * collision_coord.cols()));
+                            if (collision_coord_safe_intervals.size()==0)
+                            {
+                                this->was_static_obstacle = true;
+                                break;
+                            }
+                            // if does not overlap, break,
+                            // if overlaps, set departure time according to lowest time at safe interval
+                            bool no_overlaps_found = true;
 
-                    //         // reverse vector, so it sorted from latest to earliest safe intervals
-                    //         std::reverse(collision_coord_safe_intervals.begin(), collision_coord_safe_intervals.end());
+                            // reverse vector, so it sorted from latest to earliest safe intervals
+                            std::reverse(collision_coord_safe_intervals.begin(), collision_coord_safe_intervals.end());
 
-                    //         for (const std::pair<int, int>& collision_safe_int:collision_coord_safe_intervals){
-                    //             //we assume, that safe_intervals are sorted by time from latest to earliest.
-                    //             double time_from_candidate_to_collision =  (candidate_node.first->coords - collision_coord).norm() * (double)this->scene_task.fps / this->vmax;
-                    //             double time_collision_to_rand =  (coord_rand - collision_coord).norm() * (double)this->scene_task.fps / this->vmax;
+                            for (const std::pair<int, int>& collision_safe_int:collision_coord_safe_intervals){
+                                //we assume, that safe_intervals are sorted by time from latest to earliest.
+                                double time_from_candidate_to_collision =  (candidate_node.first->coords - collision_coord).norm() * (double)this->scene_task.fps / this->vmax;
+                                double time_collision_to_rand =  (coord_rand - collision_coord).norm() * (double)this->scene_task.fps / this->vmax;
 
-                    //             // projected to coll. coordinate parent low bound
-                    //             double pr_par_low = candidate_node.first->safe_interval.first - time_from_candidate_to_collision;
-                    //             // projected to coll. coordinate parent high bound (departure time)
-                    //             double pr_par_high = departure_time - time_from_candidate_to_collision;
+                                // projected to coll. coordinate parent low bound
+                                double pr_par_low = candidate_node.first->safe_interval.first - time_from_candidate_to_collision;
+                                // projected to coll. coordinate parent high bound (departure time)
+                                double pr_par_high = departure_time - time_from_candidate_to_collision;
 
-                    //             // projected to coll. coordinate random coord low bound
-                    //             double pr_ran_low = safe_int.first + time_collision_to_rand;
-                    //             // projected to coll. coordinate random coord high bound
-                    //             double pr_ran_high = safe_int.second + time_collision_to_rand;
+                                // projected to coll. coordinate random coord low bound
+                                double pr_ran_low = safe_int.first + time_collision_to_rand;
+                                // projected to coll. coordinate random coord high bound
+                                double pr_ran_high = safe_int.second + time_collision_to_rand;
 
-                    //             //ignore, if safe int is higher than dep time
-                    //             if(collision_safe_int.first > pr_par_high){
-                    //                 continue;
-                    //             }
-                    //             //stop iterating, if safe int is lower, than min dep time
-                    //             if(collision_safe_int.second < std::min(pr_par_low,pr_ran_low)){
-                    //                 break;
-                    //             }
+                                //ignore, if safe int is higher than dep time
+                                if(collision_safe_int.first > pr_par_high){
+                                    continue;
+                                }
+                                //stop iterating, if safe int is lower, than min dep time
+                                if(collision_safe_int.second < std::min(pr_par_low,pr_ran_low)){
+                                    break;
+                                }
 
-                    //             // get overlapping between parent and col
+                                // get overlapping between parent and col
 
-                    //             double overlap_par_col_low = std::max(pr_par_low,(double)collision_safe_int.first);
-                    //             double overlap_par_col_high = std::min(pr_par_high,(double)collision_safe_int.second);
-                    //             if (overlap_par_col_low > overlap_par_col_high){
-                    //                 continue;
-                    //             }
+                                double overlap_par_col_low = std::max(pr_par_low,(double)collision_safe_int.first);
+                                double overlap_par_col_high = std::min(pr_par_high,(double)collision_safe_int.second);
+                                if (overlap_par_col_low > overlap_par_col_high){
+                                    continue;
+                                }
 
-                    //             // get resulting overlapping with random coord safe_int
+                                // get resulting overlapping with random coord safe_int
 
-                    //             double result_overlap_low = std::max(overlap_par_col_low,pr_ran_low);
-                    //             double result_overlap_high = std::min(overlap_par_col_high,pr_ran_high);
-                    //             if (result_overlap_low > result_overlap_high){
-                    //                 continue;
-                    //             }
+                                double result_overlap_low = std::max(overlap_par_col_low,pr_ran_low);
+                                double result_overlap_high = std::min(overlap_par_col_high,pr_ran_high);
+                                if (result_overlap_low > result_overlap_high){
+                                    continue;
+                                }
 
-                    //             no_overlaps_found = false;
-                    //             // if (!is_collision_motion(collision_coord, start_coords , result_overlap_high, departure_time))
-                    //             // {
-                    //             //     this->current_tree->add_vertex(collision_coord, safe_int, candidate_node.first, departure_time, result_overlap_high);
-                    //             //     // added_vertices.push_back(this->current_tree->array_of_vertices.back());
-                    //             // }
-                    //             // assert(result_overlap_high <= pr_par_high);
-                    //             // assert(result_overlap_high + time_from_candidate_to_collision <=departure_time);
-                    //             // assert(result_overlap_high + time_from_candidate_to_collision >= std::max((double)candidate_node.first->safe_interval.first, (double)safe_int.first + time_to_node));
-                    //             if (( departure_time-(result_overlap_high + time_from_candidate_to_collision))>1)
-                    //             {
-                    //                 departure_time = result_overlap_high + time_from_candidate_to_collision+1 ;
-                    //                 col_coord_safe_int_first = result_overlap_low + time_from_candidate_to_collision;
-                    //                 col_coord_safe_int_second = departure_time -1;
-                    //             }
+                                no_overlaps_found = false;
+                                // if (!is_collision_motion(collision_coord, start_coords , result_overlap_high, departure_time))
+                                // {
+                                //     this->current_tree->add_vertex(collision_coord, safe_int, candidate_node.first, departure_time, result_overlap_high);
+                                //     // added_vertices.push_back(this->current_tree->array_of_vertices.back());
+                                // }
+                                // assert(result_overlap_high <= pr_par_high);
+                                // assert(result_overlap_high + time_from_candidate_to_collision <=departure_time);
+                                // assert(result_overlap_high + time_from_candidate_to_collision >= std::max((double)candidate_node.first->safe_interval.first, (double)safe_int.first + time_to_node));
+                                if (( departure_time-(result_overlap_high + time_from_candidate_to_collision))>1)
+                                {
+                                    departure_time = result_overlap_high + time_from_candidate_to_collision+1 ;
+                                    col_coord_safe_int_first = result_overlap_low + time_from_candidate_to_collision;
+                                    col_coord_safe_int_second = departure_time -1;
+                                }
 
-                    //             }
-                    //         if (no_overlaps_found){
-                    //         //    safe_interval_ind++;
-                    //         this->was_static_obstacle = true;   
-                    //             break;
-                    //         }
-                    //     }
+                                }
+                            if (no_overlaps_found){
+                            //    safe_interval_ind++;
+                            this->was_static_obstacle = true;   
+                                break;
+                            }
+                        }
                 }
                 if (found_parent)
                 {
