@@ -9,7 +9,7 @@ import argparse
 import os
 import random
 from concurrent.futures import ProcessPoolExecutor
-NUM_CPUS = 128
+NUM_CPUS = 120
 
 def parse_my_args(argv=None):
     PARSER = argparse.ArgumentParser()
@@ -47,7 +47,7 @@ def main( path_to_strrt_config_json: str) -> None:
     test_dirs = [f"./mass_test/tests/{i}_spheres" for i in range(0,301,20)]
     test_dirs[0] ="./mass_test/tests/1_spheres"
     
-    random.seed()
+    random.seed(42)
     futures = []
     with ProcessPoolExecutor(max_workers=NUM_CPUS) as executor:
         for test_dir in test_dirs:
